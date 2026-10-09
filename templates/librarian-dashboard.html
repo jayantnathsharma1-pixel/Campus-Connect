@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Portal - Campus Connect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header class="dashboard-header">
+        <a href="{{ url_for('home') }}" class="logo" style="text-decoration: none;">
+            <span class="logo-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+                    <!-- Connection Lines -->
+                    <path d="M4 16L12 21L20 16" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 21V11" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="4" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="20" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="12" cy="21" r="1.5" fill="#3b82f6"/>
+                    <!-- Graduation Cap -->
+                    <path d="M12 3L2 8.5L12 14L22 8.5L12 3Z" fill="#3b82f6" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M22 8.5V14" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="22" cy="15" r="1.5" fill="#3b82f6"/>
+                </svg>
+            </span>
+            <span class="logo-text">Campus Connect Library</span>
+            <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 13px; margin-left: 8px;">
+                <i class="fa-solid fa-building-columns"></i> {{ college_name }} ({{ college_id }})
+            </span>
+        </a>
+        <div class="teacher-info">
+            <span>{{ name }} (Librarian)</span>
+            <button class="theme-toggle-btn" id="themeToggle">
+                <span id="themeIcon"><i class="fa-solid fa-moon"></i></span> <span id="themeText">Dark</span>
+            </button>
+            
+            <button class="btn-submit" style="background: #3b82f6; border-radius: 20px; padding: 6px 15px; font-size: 13px;" onclick="openModal('editProfileModal')">
+                <i class="fa-solid fa-user-pen"></i> Edit Profile
+            </button>
+<a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <h1>College Library Management Portal</h1>
+        <p class="welcome-text">Review student book requests, manage book inventory, track due dates, and issue overdue warning notices.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert-msg {{ category }}">
+                        <span>{{ message }}</span>
+                        <button type="button" class="alert-close-btn" onclick="dismissAlert(this)"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Action Buttons -->
+        <div class="admin-top-actions">
+            <button class="btn-submit" style="background: #2563eb;" onclick="openModal('addBookModal')"><i class="fa-solid fa-book-open"></i> Add New Book to Inventory</button>
+            <button class="btn-submit" style="background: #16a34a;" onclick="openModal('issueBookModal')"><i class="fa-solid fa-arrow-up-from-bracket"></i> Direct Issue Book to Student</button>
+            <button class="btn-submit" style="background: #7c3aed;" onclick="openModal('librarianMsgModal')"><i class="fa-solid fa-paper-plane"></i> Send Message / Notice</button>
+        </div>
+
+        <!-- 1. ISSUED & REQUESTED BOOKS TRACKER WITH DELETE ACTION -->
+        <h2><i class="fa-solid fa-book-open"></i> Student Book Borrowing & Approval Requests ({{ issued_books|length }})</h2>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Student Name & Roll</th>
+                        <th>Branch & Year</th>
+                        <th>Book Name & Code</th>
+                        <th>Borrow / Request Date</th>
+                        <th>Return Due Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ib in issued_books %}
+                    <tr>
+                        <td><strong>{{ ib.student_name }}</strong><br><small>{{ ib.student_id }}</small></td>
+                        <td>{{ ib.branch }} • {{ ib.year }}</td>
+                        <td><strong>{{ ib.book_name }}</strong><br><small>Code: {{ ib.book_code }}</small></td>
+                        <td>{{ ib.borrow_date }}</td>
+                        <td><strong style="color: #dc2626;">{{ ib.due_date }}</strong></td>
+                        <td>
+                            {% if ib.status == 'pending' %}
+                            <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: bold;"><i class="fa-solid fa-hourglass-half"></i> Request Pending</span>
+                            {% elif ib.status == 'issued' %}
+                            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: bold;">Issued</span>
+                            {% elif ib.status == 'returned' %}
+                            <span class="badge" style="background: #e0f2fe; color: #0369a1;">Returned</span>
+                            {% elif ib.status == 'overdue' %}
+                            <span class="badge" style="background: #fee2e2; color: #b91c1c; font-weight: bold;">Overdue</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ib.status == 'pending' %}
+                            <a href="{{ url_for('approve_book_request', issue_id=ib.id) }}" class="btn-submit" style="padding: 4px 8px; font-size: 11px; background: #2563eb; text-decoration: none; margin-right: 4px;">Approve & Issue</a>
+                            {% elif ib.status == 'issued' %}
+                            <a href="{{ url_for('return_book', issue_id=ib.id) }}" class="btn-submit" style="padding: 4px 8px; font-size: 11px; background: #16a34a; text-decoration: none; margin-right: 4px;">Return</a>
+                            <a href="{{ url_for('send_library_warning', issue_id=ib.id) }}" class="btn-submit" style="padding: 4px 8px; font-size: 11px; background: #f59e0b; text-decoration: none; margin-right: 4px;"><i class="fa-solid fa-triangle-exclamation"></i> Warn</a>
+                            {% else %}
+                            <span style="color: green; font-weight: bold; font-size: 12px; margin-right: 6px;">Completed</span>
+                            {% endif %}
+                            
+                            <!-- Delete Option for Student Issue/Request -->
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('delete_book_issue', issue_id=ib.id) }}', 'Are you sure you want to delete this borrowing record for {{ ib.student_name }}?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">No student book requests or issued books found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 2. BOOK INVENTORY CATALOGUE WITH VIEW MORE / SHOW LESS -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 45px; margin-bottom: 12px; flex-wrap: wrap; gap: 15px;">
+            <h2 style="margin: 0;"><i class="fa-solid fa-book"></i> College Library Book Catalog (Total Titles: {{ books|length }})</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table" id="booksInventoryTable">
+                <thead>
+                    <tr>
+                        <th>Book Code / ISBN</th>
+                        <th>Book Title</th>
+                        <th>Author</th>
+                        <th>Total Copies</th>
+                        <th>Available Copies</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in books %}
+                    <tr class="book-row" {% if loop.index > 3 %}style="display: none;"{% endif %}>
+                        <td><strong>{{ b.book_code }}</strong></td>
+                        <td>{{ b.book_name }}</td>
+                        <td>{{ b.author }}</td>
+                        <td>{{ b.total_copies }}</td>
+                        <td><strong style="color: #16a34a;">{{ b.available_copies }}</strong></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No books added in library inventory yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if books|length > 3 %}
+        <div style="text-align: center; margin-top: 10px; margin-bottom: 25px;">
+            <button type="button" id="btnToggleBooks" class="btn-submit" style="background: #2563eb; font-size: 13px; padding: 8px 22px; border-radius: 20px;" onclick="toggleTableRows('book-row', 'btnToggleBooks', 3)">
+                <i class="fa-solid fa-eye"></i> View More (Show All {{ books|length }} Books)
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- 3. NOTICES -->
+        <h2 style="margin-top: 40px;"><i class="fa-solid fa-envelope-open-text"></i> Library Notices & Memos ({{ notices|length }})</h2>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Recipient</th>
+                        <th>Category & Subject</th>
+                        <th>Details</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for n in notices %}
+                    <tr>
+                        <td>{{ n.recipient_id if n.recipient_id else 'All Campus' }}</td>
+                        <td><span class="badge" style="background: #fef08a; color: #854d0e;">{{ n.category }}</span><br><strong>{{ n.title }}</strong></td>
+                        <td>{{ n.description }}</td>
+                        <td>{{ n.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('delete_notice', notice_id=n.id) }}', 'Delete this notice?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No notices sent yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- MODAL 1: ADD BOOK -->
+    <div id="addBookModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fa-solid fa-book-open"></i> Add Book to Library Inventory</h3>
+            <form action="{{ url_for('add_book') }}" method="POST">
+                <label>Book Code / ISBN:</label>
+                <input type="text" name="book_code" placeholder="e.g. CS-101" required>
+
+                <label>Book Title:</label>
+                <input type="text" name="book_name" placeholder="e.g. Data Structures in C" required>
+
+                <label>Author Name:</label>
+                <input type="text" name="author" placeholder="Author name" required>
+
+                <label>Total Copies:</label>
+                <input type="number" name="total_copies" value="5" min="1" required>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('addBookModal')">Cancel</button>
+                    <button type="submit" class="btn-submit"><i class="fa-solid fa-plus"></i> Add Book</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ISSUE BOOK WITH LIVE SEARCH BAR -->
+    <div id="issueBookModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3><i class="fa-solid fa-arrow-up-from-bracket"></i> Direct Issue Book to Student</h3>
+            <p class="modal-subtext">Search student roll no / name and issue library book with return duration:</p>
+            
+            <form action="{{ url_for('issue_book') }}" method="POST">
+                <!-- Search bar for selecting student -->
+                <div style="margin-bottom: 12px;">
+                    <label style="color: #2563eb; font-weight: bold;"><i class="fa-solid fa-magnifying-glass"></i> Search Student Name or Roll Number:</label>
+                    <input type="text" id="issueStudentSearchInput" onkeyup="filterIssueStudentsList()" placeholder="Type roll number or name..." style="border: 1.5px solid #2563eb; background: var(--bg-card); font-weight: bold;">
+                </div>
+
+                <label>1. Select Student:</label>
+                <select id="issue_student_select" name="student_id" required>
+                    <option value="">-- Choose Student --</option>
+                    {% for s in students %}
+                    <option value="{{ s.user_id }}" class="issue-student-opt">
+                        {{ s.name }} ({{ s.branch }} - {{ s.year }}) - Roll: {{ s.user_id }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <label>2. Select Available Book:</label>
+                <select name="book_code" required>
+                    <option value="">-- Choose Available Book --</option>
+                    {% for b in books %}
+                    {% if b.available_copies > 0 %}
+                    <option value="{{ b.book_code }}">{{ b.book_name }} by {{ b.author }} (Avail: {{ b.available_copies }})</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+
+                <label>3. Borrow Duration (Days before return):</label>
+                <select name="duration_days" required>
+                    <option value="7">7 Days (1 Week)</option>
+                    <option value="14" selected>14 Days (2 Weeks)</option>
+                    <option value="30">30 Days (1 Month)</option>
+                </select>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('issueBookModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #16a34a;"><i class="fa-solid fa-share-from-square"></i> Issue Book</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: DIRECT MESSAGE (FIXED: STAFF & STUDENTS PROPERLY SEPARATED) -->
+    <div id="librarianMsgModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fa-solid fa-paper-plane"></i> Dispatch Message to Student / Faculty / Admin</h3>
+            <form action="{{ url_for('send_message') }}" method="POST">
+                <input type="hidden" name="category" value="Library Memo">
+
+                <label>Select Recipient:</label>
+                <select name="recipient_id" required>
+                    <option value="all">All Campus (Everyone)</option>
+                    <optgroup label="Direct Message to a Student">
+                        {% for s in students %}
+                        <option value="{{ s.user_id }}">{{ s.name }} (Roll: {{ s.user_id }})</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="Direct Message to Staff / Administration">
+                        {% for a in authorities %}
+                        {% if a.role != 'student' %}
+                        <option value="{{ a.user_id }}">{{ a.name }} ({{ a.designation if a.designation else a.role }})</option>
+                        {% endif %}
+                        {% endfor %}
+                    </optgroup>
+                </select>
+
+                <label>Subject / Heading:</label>
+                <input type="text" name="title" required placeholder="Subject heading...">
+
+                <label>Message Content:</label>
+                <textarea name="description" rows="3" required placeholder="Type message in detail..."></textarea>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('librarianMsgModal')">Cancel</button>
+                    <button type="submit" class="btn-submit">Dispatch Message</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CUSTOM THEMED CONFIRM DELETE MODAL -->
+    <div id="customDeleteModal" class="modal">
+        <div class="modal-content custom-confirm-card">
+            <div class="confirm-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <h3>Confirm Delete Action</h3>
+            <p id="customDeleteMessage">Are you sure you want to delete this record?</p>
+            <div style="display: flex; justify-content: center; gap: 12px;">
+                <button type="button" class="btn-close" onclick="closeCustomDeleteModal()">Cancel</button>
+                <button class="btn-action btn-delete" type="button" id="customDeleteConfirmBtn"><i class="fa-solid fa-trash"></i> Delete</button>
+            </div>
+        </div>
+    </div>
+
+    
+    <footer><p>© 2026 {{ college_name }} | Library Management Portal</p></footer>
+
+    <!-- HELPER SCRIPT FOR STUDENT LIVE SEARCH IN DIRECT ISSUE MODAL -->
+    <script>
+        function filterIssueStudentsList() {
+            var filter = document.getElementById('issueStudentSearchInput').value.toLowerCase().trim();
+            var select = document.getElementById('issue_student_select');
+            var options = select.getElementsByClassName('issue-student-opt');
+            var firstMatch = null;
+
+            for (var i = 0; i < options.length; i++) {
+                var text = options[i].textContent || options[i].innerText;
+                if (text.toLowerCase().indexOf(filter) > -1) {
+                    options[i].style.display = "";
+                    if (!firstMatch && filter !== "") firstMatch = options[i];
+                } else {
+                    options[i].style.display = "none";
+                }
+            }
+
+            if (firstMatch) {
+                select.value = firstMatch.value;
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+    <!-- MODAL: EDIT PROFILE & PASSWORD -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3><i class="fa-solid fa-user-pen"></i> Edit Profile & Change Password</h3>
+            <p class="modal-subtext">Update your personal details or securely change your password.</p>
+            
+            <form action="{{ url_for('update_profile') }}" method="POST">
+                <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Basic Details</h4>
+                <label>Full Name <span style="color:red">*</span></label>
+                <input type="text" name="name" class="search-input" value="{{ current_user.name if current_user else name }}" required>
+                
+                <label style="margin-top: 15px; display: block;">Email Address <span style="color:red">*</span></label>
+                <input type="email" name="email" class="search-input" value="{{ current_user.email if current_user else '' }}" required>
+                
+                <label style="margin-top: 15px; display: block;">Contact Number</label>
+                <input type="text" name="phone" class="search-input" value="{{ current_user.phone if current_user and current_user.phone else '' }}" placeholder="Enter 10-digit number">
+                
+                <h4 style="margin-top: 25px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Change Password <small style="font-weight: normal; color: var(--text-secondary);">(Leave blank if not changing)</small></h4>
+                
+                <label>Current Password <span style="color:red">*</span></label>
+                <input type="password" name="old_password" class="search-input" placeholder="Required to save ANY changes" required>
+                
+                <label style="margin-top: 15px; display: block;">New Password</label>
+                <input type="password" name="new_password" class="search-input" placeholder="Enter new password">
+                
+                <label style="margin-top: 15px; display: block;">Confirm New Password</label>
+                <input type="password" name="confirm_new_password" class="search-input" placeholder="Confirm new password">
+                
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                    <button type="button" class="btn-close" onclick="closeModal('editProfileModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #0284c7;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

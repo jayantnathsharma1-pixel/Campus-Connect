@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accounts & Finance Portal - Campus Connect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header class="dashboard-header">
+        <a href="{{ url_for('home') }}" class="logo" style="text-decoration: none;">
+            <span class="logo-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+                    <!-- Connection Lines -->
+                    <path d="M4 16L12 21L20 16" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 21V11" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="4" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="20" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="12" cy="21" r="1.5" fill="#3b82f6"/>
+                    <!-- Graduation Cap -->
+                    <path d="M12 3L2 8.5L12 14L22 8.5L12 3Z" fill="#3b82f6" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M22 8.5V14" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="22" cy="15" r="1.5" fill="#3b82f6"/>
+                </svg>
+            </span>
+            <span class="logo-text">Campus Connect Accounts</span>
+            <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 13px; margin-left: 8px;">
+                <i class="fa-solid fa-building-columns"></i> {{ college_name }} ({{ college_id }})
+            </span>
+        </a>
+        <div class="teacher-info">
+            <span>{{ name }} (Accountant)</span>
+            <button class="theme-toggle-btn" id="themeToggle">
+                <span id="themeIcon"><i class="fa-solid fa-moon"></i></span> <span id="themeText">Dark</span>
+            </button>
+            
+            <button class="btn-submit" style="background: #3b82f6; border-radius: 20px; padding: 6px 15px; font-size: 13px;" onclick="openModal('editProfileModal')">
+                <i class="fa-solid fa-user-pen"></i> Edit Profile
+            </button>
+<a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <h1>College Accounts & Finance Management Portal</h1>
+        <p class="welcome-text">Verify student fee payments, assign semester fee structures, track remaining dues, and issue overdue fee reminders.</p>
+
+        <!-- DISMISSIBLE ALERT NOTIFICATIONS -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert-msg {{ category }}">
+                        <span>{{ message }}</span>
+                        <button type="button" class="alert-close-btn" onclick="dismissAlert(this)"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Accounts Summary Statistics Cards -->
+        <div class="stats-container">
+            <div class="stat-card stat-border-green">
+                <span class="stat-num">₹ {{ stats.total_collected }}</span>
+                <span class="stat-label">Total Fee Collected</span>
+            </div>
+            <div class="stat-card stat-border-red">
+                <span class="stat-num">₹ {{ stats.total_dues }}</span>
+                <span class="stat-label">Total Pending Dues</span>
+            </div>
+            <div class="stat-card stat-border-yellow">
+                <span class="stat-num">{{ stats.unverified_count }}</span>
+                <span class="stat-label">Pending Verification Slips</span>
+            </div>
+            <div class="stat-card stat-border-blue">
+                <span class="stat-num">{{ stats.total_records }}</span>
+                <span class="stat-label">Fee Structure Records</span>
+            </div>
+        </div>
+
+        <!-- Top Action Buttons -->
+        <div class="admin-top-actions">
+            <button class="btn-submit" style="background: #16a34a;" onclick="openModal('assignFeeModal')">
+                <i class="fa-solid fa-plus"></i> Assign / Update Student Fee Structure
+            </button>
+            <button class="btn-submit" style="background: #7c3aed;" onclick="openModal('accountantMsgModal')">
+                <i class="fa-solid fa-envelope"></i> Send Fee Reminder / Direct Notice
+            </button>
+        </div>
+
+        <!-- 1. PENDING & VERIFIED TRANSACTIONS TABLE (WITH DELETE) -->
+        <h2><i class="fa-solid fa-file-invoice-dollar"></i> Student Fee Payment Submissions & Verification ({{ transactions|length }})</h2>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Student Name & Roll</th>
+                        <th>Branch & Year</th>
+                        <th>Amount</th>
+                        <th>Mode</th>
+                        <th>Transaction Ref / UTR</th>
+                        <th>Payment Date</th>
+                        <th>Verification Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in transactions %}
+                    <tr>
+                        <td><strong>{{ tx.student_name }}</strong><br><small>{{ tx.student_id }}</small></td>
+                        <td>{{ tx.branch }} • {{ tx.year }}</td>
+                        <td><strong style="color: #16a34a; font-size: 15px;">₹ {{ tx.amount }}</strong></td>
+                        <td><span class="badge" style="background: #e0f2fe; color: #0284c7;">{{ tx.payment_mode }}</span></td>
+                        <td><strong>{{ tx.transaction_ref_no }}</strong><br><small style="color: var(--text-secondary);">{{ tx.remarks }}</small></td>
+                        <td>{{ tx.payment_date }}</td>
+                        <td>
+                            {% if tx.status == 'pending_verification' %}
+                            <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: bold;"><i class="fa-solid fa-hourglass-half"></i> Verification Pending</span>
+                            {% elif tx.status == 'verified' %}
+                            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: bold;"><i class="fa-solid fa-circle-check"></i> Verified</span>
+                            {% elif tx.status == 'rejected' %}
+                            <span class="badge" style="background: #fee2e2; color: #b91c1c; font-weight: bold;"><i class="fa-solid fa-circle-xmark"></i> Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if tx.status == 'pending_verification' %}
+                            <a href="{{ url_for('verify_payment', tx_id=tx.id, status='verified') }}" class="btn-submit" style="padding: 4px 8px; font-size: 11px; background: #16a34a; text-decoration: none; margin-right: 4px;">Approve</a>
+                            <a href="{{ url_for('verify_payment', tx_id=tx.id, status='rejected') }}" class="btn-submit" style="padding: 4px 8px; font-size: 11px; background: #dc2626; text-decoration: none; margin-right: 4px;">Reject</a>
+                            {% else %}
+                            <small style="color: var(--text-secondary); margin-right: 6px;">By {{ tx.verified_by if tx.verified_by else 'Admin' }}</small>
+                            {% endif %}
+                            
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('delete_fee_transaction', tx_id=tx.id) }}', 'Delete this fee transaction entry?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" style="text-align: center; color: var(--text-secondary);">No student fee payment submissions received yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 2. STUDENT FEES STRUCTURE & DUES LEDGER (WITH DELETE) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 45px; margin-bottom: 12px; flex-wrap: wrap; gap: 15px;">
+            <h2 style="margin: 0;"><i class="fa-solid fa-money-check-dollar"></i> Student Semester Dues & Accounts Ledger (Total: {{ student_fees|length }})</h2>
+            <div style="position: relative; min-width: 280px;">
+                <input type="text" id="feeStudentSearchInput" onkeyup="filterFeeLedgerTable()" placeholder="Search student name or roll..." style="width: 100%; padding: 8px 14px; border: 1.5px solid #16a34a; border-radius: 25px; font-size: 13.5px; outline: none; background: var(--input-bg); color: var(--input-text);">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table" id="feeLedgerTable">
+                <thead>
+                    <tr>
+                        <th>Student Name & Roll</th>
+                        <th>Semester</th>
+                        <th>Total Fee</th>
+                        <th>Amount Paid</th>
+                        <th>Remaining Dues</th>
+                        <th>Payment Due Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sf in student_fees %}
+                    <tr class="fee-row" {% if loop.index > 4 %}style="display: none;"{% endif %}>
+                        <td class="fee-student-cell"><strong>{{ sf.student_name }}</strong><br><small>{{ sf.student_id }}</small></td>
+                        <td>{{ sf.semester }}</td>
+                        <td>₹ {{ sf.total_fee }}</td>
+                        <td><strong style="color: #16a34a;">₹ {{ sf.paid_fee }}</strong></td>
+                        <td><strong style="color: #dc2626;">₹ {{ sf.due_fee }}</strong></td>
+                        <td>{{ sf.due_date }}</td>
+                        <td>
+                            {% if sf.status == 'paid' %}
+                            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: bold;">Paid</span>
+                            {% elif sf.status == 'partial' %}
+                            <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: bold;">Partial</span>
+                            {% else %}
+                            <span class="badge" style="background: #fee2e2; color: #b91c1c; font-weight: bold;">Due Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sf.due_fee > 0 %}
+                            <a href="{{ url_for('send_fee_warning', fee_id=sf.id) }}" class="btn-submit" style="padding: 4px 8px; font-size: 11px; background: #f59e0b; text-decoration: none; margin-right: 4px;">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Remind
+                            </a>
+                            {% else %}
+                            <span style="color: #16a34a; font-weight: bold; font-size: 12px; margin-right: 4px;">Clear <i class="fa-solid fa-circle-check"></i></span>
+                            {% endif %}
+
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('delete_student_fee', fee_id=sf.id) }}', 'Delete this student fee ledger record?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" style="text-align: center; color: var(--text-secondary);">No student fee records found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if student_fees|length > 4 %}
+        <div style="text-align: center; margin-top: 10px; margin-bottom: 25px;">
+            <button type="button" id="btnToggleFees" class="btn-submit" style="background: #16a34a; font-size: 13px; padding: 8px 22px; border-radius: 20px;" onclick="toggleTableRows('fee-row', 'btnToggleFees', 4)">
+                <i class="fa-solid fa-eye"></i> View More (Show All {{ student_fees|length }} Records)
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- 3. NOTICES -->
+        <h2 style="margin-top: 40px;"><i class="fa-solid fa-envelope-open-text"></i> Accounts Notices & Notifications ({{ notices|length }})</h2>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Recipient</th>
+                        <th>Subject & Category</th>
+                        <th>Details</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for n in notices %}
+                    <tr>
+                        <td>{{ n.recipient_id if n.recipient_id else 'All Campus' }}</td>
+                        <td><span class="badge" style="background: #fef08a; color: #854d0e;">{{ n.category }}</span><br><strong>{{ n.title }}</strong></td>
+                        <td>{{ n.description }}</td>
+                        <td>{{ n.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('delete_notice', notice_id=n.id) }}', 'Delete this notice?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No notices sent yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- MODAL 1: ASSIGN / UPDATE FEE STRUCTURE -->
+    <div id="assignFeeModal" class="modal">
+        <div class="modal-content" style="max-width: 550px;">
+            <h3><i class="fa-solid fa-plus"></i> Assign Semester Fee Structure to Student</h3>
+            <p class="modal-subtext">Set student semester fee, any advance payment received, and payment due date:</p>
+            <form action="{{ url_for('assign_fee_structure') }}" method="POST">
+                
+                <label>1. Select Enrolled Student:</label>
+                <select name="student_id" required>
+                    <option value="">-- Choose Student --</option>
+                    {% for s in students %}
+                    <option value="{{ s.user_id }}">{{ s.name }} ({{ s.branch }} - {{ s.year }}) - Roll: {{ s.user_id }}</option>
+                    {% endfor %}
+                </select>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>2. Semester / Term:</label>
+                        <select name="semester" required>
+                            <option value="1st Semester">1st Semester</option>
+                            <option value="2nd Semester">2nd Semester</option>
+                            <option value="3rd Semester">3rd Semester</option>
+                            <option value="4th Semester">4th Semester</option>
+                            <option value="5th Semester">5th Semester</option>
+                            <option value="6th Semester">6th Semester</option>
+                            <option value="7th Semester">7th Semester</option>
+                            <option value="8th Semester">8th Semester</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Payment Due Date:</label>
+                        <input type="date" name="due_date" required>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Total Semester Fee (₹):</label>
+                        <input type="number" step="0.01" name="total_fee" value="55000.00" required>
+                    </div>
+                    <div>
+                        <label>Initial Amount Paid (₹):</label>
+                        <input type="number" step="0.01" name="paid_fee" value="0.00" required>
+                    </div>
+                </div>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('assignFeeModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #16a34a;">Save Fee Structure</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: DIRECT MESSAGE -->
+    <div id="accountantMsgModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fa-solid fa-envelope"></i> Dispatch Accounts Notice / Direct Reminder</h3>
+            <form action="{{ url_for('send_message') }}" method="POST">
+                <input type="hidden" name="category" value="Accounts Notice">
+
+                <label>Select Recipient:</label>
+                <select name="recipient_id" required>
+                    <option value="all">All Campus (Everyone)</option>
+                    <optgroup label="Direct Message to a Student">
+                        {% for s in students %}
+                        <option value="{{ s.user_id }}">{{ s.name }} (Roll: {{ s.user_id }})</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="Direct Message to Staff / Administration">
+                        {% for a in authorities %}
+                        {% if a.role != 'student' %}
+                        <option value="{{ a.user_id }}">{{ a.name }} ({{ a.designation if a.designation else a.role }})</option>
+                        {% endif %}
+                        {% endfor %}
+                    </optgroup>
+                </select>
+
+                <label>Subject / Heading:</label>
+                <input type="text" name="title" required placeholder="Subject heading...">
+
+                <label>Message Content:</label>
+                <textarea name="description" rows="3" required placeholder="Type accounts notice or fee dues reminder..."></textarea>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('accountantMsgModal')">Cancel</button>
+                    <button type="submit" class="btn-submit">Dispatch Notice</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CUSTOM THEMED CONFIRM DELETE MODAL -->
+    <div id="customDeleteModal" class="modal">
+        <div class="modal-content custom-confirm-card">
+            <div class="confirm-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <h3>Confirm Action</h3>
+            <p id="customDeleteMessage">Are you sure you want to delete this record?</p>
+            <div style="display: flex; justify-content: center; gap: 12px;">
+                <button type="button" class="btn-close" onclick="closeCustomDeleteModal()">Cancel</button>
+                <button class="btn-action btn-delete" type="button" id="customDeleteConfirmBtn"><i class="fa-solid fa-trash"></i> Delete</button>
+            </div>
+        </div>
+    </div>
+
+    
+    <footer><p>© 2026 {{ college_name }} | Accounts & Finance Portal</p></footer>
+
+    <script>
+        function filterFeeLedgerTable() {
+            var input = document.getElementById("feeStudentSearchInput");
+            var filter = input.value.toLowerCase().trim();
+            var rows = document.getElementsByClassName("fee-row");
+
+            for (var i = 0; i < rows.length; i++) {
+                var cell = rows[i].getElementsByClassName("fee-student-cell")[0];
+                if (cell) {
+                    var text = cell.textContent || cell.innerText;
+                    if (text.toLowerCase().indexOf(filter) > -1) {
+                        rows[i].style.display = "";
+                    } else {
+                        rows[i].style.display = "none";
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+    <!-- MODAL: EDIT PROFILE & PASSWORD -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3><i class="fa-solid fa-user-pen"></i> Edit Profile & Change Password</h3>
+            <p class="modal-subtext">Update your personal details or securely change your password.</p>
+            
+            <form action="{{ url_for('update_profile') }}" method="POST">
+                <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Basic Details</h4>
+                <label>Full Name <span style="color:red">*</span></label>
+                <input type="text" name="name" class="search-input" value="{{ current_user.name if current_user else name }}" required>
+                
+                <label style="margin-top: 15px; display: block;">Email Address <span style="color:red">*</span></label>
+                <input type="email" name="email" class="search-input" value="{{ current_user.email if current_user else '' }}" required>
+                
+                <label style="margin-top: 15px; display: block;">Contact Number</label>
+                <input type="text" name="phone" class="search-input" value="{{ current_user.phone if current_user and current_user.phone else '' }}" placeholder="Enter 10-digit number">
+                
+                <h4 style="margin-top: 25px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Change Password <small style="font-weight: normal; color: var(--text-secondary);">(Leave blank if not changing)</small></h4>
+                
+                <label>Current Password <span style="color:red">*</span></label>
+                <input type="password" name="old_password" class="search-input" placeholder="Required to save ANY changes" required>
+                
+                <label style="margin-top: 15px; display: block;">New Password</label>
+                <input type="password" name="new_password" class="search-input" placeholder="Enter new password">
+                
+                <label style="margin-top: 15px; display: block;">Confirm New Password</label>
+                <input type="password" name="confirm_new_password" class="search-input" placeholder="Confirm new password">
+                
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                    <button type="button" class="btn-close" onclick="closeModal('editProfileModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #0284c7;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

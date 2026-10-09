@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Connect - Portal Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        #college_id {
+            font-weight: bold;
+            color: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="{{ url_for('home') }}" class="logo">
+            <span class="logo-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+                    <!-- Connection Lines -->
+                    <path d="M4 16L12 21L20 16" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 21V11" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="4" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="20" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="12" cy="21" r="1.5" fill="#3b82f6"/>
+                    <!-- Graduation Cap -->
+                    <path d="M12 3L2 8.5L12 14L22 8.5L12 3Z" fill="#3b82f6" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M22 8.5V14" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="22" cy="15" r="1.5" fill="#3b82f6"/>
+                </svg>
+            </span>
+            <span class="logo-text">Campus Connect</span>
+        </a>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <button type="button" class="theme-toggle-btn" id="themeToggle">
+                <span id="themeIcon"><i class="fa-solid fa-moon"></i></span> <span id="themeText">Dark</span>
+            </button>
+        </nav>
+    </header>
+
+    <div class="login-container">
+        <div class="login-box">
+            <h1>Campus Connect</h1>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert-msg {{ category }}">
+                            <span>{{ message }}</span>
+                            <button type="button" class="alert-close-btn" onclick="dismissAlert(this)" title="Dismiss message" aria-label="Dismiss message"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('login') }}">
+                <label for="college_id">Select Your College / Institution</label>
+                <select id="college_id" name="college_id" required>
+                    {% for c in colleges %}
+                    {% if c.college_id == 'kmbb1234' %}
+                    <option value="{{ c.college_id }}" selected>
+                        {{ c.college_name }} ({{ c.college_id }})
+                    </option>
+                    {% else %}
+                    <option value="{{ c.college_id }}">
+                        {{ c.college_name }} ({{ c.college_id }})
+                    </option>
+                    {% endif %}
+                    {% else %}
+                    <option value="kmbb1234" selected>KMBB College of Engineering and Technology (kmbb1234)</option>
+                    {% endfor %}
+                </select>
+
+                <label for="role">Login Role</label>
+                <select id="role" name="role" required>
+                    <option value="student">Student</option>
+                    <option value="teacher">Faculty / Staff / Examination Cell</option>
+                    <option value="admin">College Administration</option>
+                </select>
+
+                <label for="userId">Roll Number / Official User ID</label>
+                <input type="text" id="userId" name="userId" placeholder="Enter your ID / Roll Number" required>
+
+                <label for="password">Password</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('password', 'loginEyeIcon')" title="Show/Hide Password" aria-label="Toggle password visibility">
+                        <span id="loginEyeIcon">
+                            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </span>
+                    </button>
+                </div>
+
+                <div class="forgot-link-wrapper">
+                    <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
+                </div>
+
+                <button type="submit">Log In to Portal</button>
+            </form>
+
+            <div class="auth-footer-links" style="margin-top: 18px; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+                Are you an institution? 
+                <a href="javascript:void(0)" onclick="openModal('registerCollegeModal')" style="color: #7c3aed; font-weight: bold;">
+                    <i class="fa-solid fa-building-columns"></i> Register New College
+                </a>
+            </div>
+
+            <a href="{{ url_for('home') }}" class="back-home">← Back to Home</a>
+        </div>
+    </div>
+
+    <!-- MODAL: REGISTER NEW COLLEGE (WITH REAL-TIME EMAIL OTP) -->
+    <div id="registerCollegeModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3><i class="fa-solid fa-building-columns"></i> Onboard & Register New College</h3>
+            <p class="modal-subtext">Register your institution with email OTP verification to launch an isolated workspace:</p>
+            <form action="{{ url_for('register_college') }}" method="POST">
+                <label>College Full Legal Name:</label>
+                <input type="text" name="college_name" placeholder="e.g. Oxford Institute of Technology" required>
+
+                <label>Desired Unique College ID / Code:</label>
+                <input type="text" name="college_id" placeholder="e.g. oit2026 (lowercase, no spaces)" required>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Admin User ID:</label>
+                        <input type="text" name="admin_id" placeholder="e.g. admin_oit" required>
+                    </div>
+                    <div>
+                        <label>Admin Full Name:</label>
+                        <input type="text" id="clg_admin_name" name="admin_name" placeholder="Legal Name" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label>Official Admin Email Address (For OTP):</label>
+                    <div class="email-otp-flex">
+                        <input type="email" id="clg_admin_email" name="admin_email" placeholder="admin@college.edu" required>
+                        <button type="button" id="btnSendClgOtp" onclick="sendModalOtp('clg_admin_email', 'clg_admin_name', 'btnSendClgOtp', 'clgOtpStatus')" class="otp-send-btn">
+                            <i class="fa-solid fa-envelope"></i> Send OTP
+                        </button>
+                    </div>
+                    <small id="clgOtpStatus" style="display: block; margin-top: 3px; font-weight: bold;"></small>
+                </div>
+
+                <div class="otp-box-highlight">
+                    <label><i class="fa-solid fa-key"></i> Enter 6-Digit Verification OTP (Received on Admin Email):</label>
+                    <input type="text" name="email_otp" placeholder="Enter 6-digit OTP (e.g. 849201)" maxlength="6" required>
+                </div>
+
+                <label>Set Master Admin Password:</label>
+                <input type="password" name="admin_password" placeholder="Create strong password" required>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('registerCollegeModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #7c3aed;">Complete College Registration</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    
+
+    <footer>
+        <p>© 2026 Campus Connect | One Campus Platform</p>
+    </footer>
+
+    <!-- HELPER SCRIPT FOR COLLEGE MODAL OTP -->
+    <script>
+        function sendModalOtp(emailInputId, nameInputId, btnId, statusElemId) {
+            var emailVal = document.getElementById(emailInputId).value.trim();
+            var nameVal = document.getElementById(nameInputId).value.trim();
+            var statusElem = document.getElementById(statusElemId);
+            var btn = document.getElementById(btnId);
+
+            if (!emailVal) {
+                alert("Please enter email address first!");
+                document.getElementById(emailInputId).focus();
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> Sending...';
+            statusElem.style.color = "#0284c7";
+            statusElem.innerText = "Sending verification OTP to " + emailVal + "...";
+
+            var formData = new FormData();
+            formData.append("email", emailVal);
+            formData.append("name", nameVal);
+
+            fetch("/send-onboard-otp", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerText = "<i class="fa-solid fa-rotate-right"></i> Resend OTP";
+                if (data.success) {
+                    statusElem.style.color = "#16a34a";
+                    statusElem.innerText = data.message + " Enter 6-digit code below.";
+                } else {
+                    statusElem.style.color = "#ef4444";
+                    statusElem.innerText = data.message;
+                }
+            })
+            .catch(error => {
+                btn.disabled = false;
+                btn.innerText = "<i class="fa-solid fa-envelope"></i> Send OTP";
+                statusElem.style.color = "#ef4444";
+                statusElem.innerText = "Server error. Please verify SMTP credentials.";
+            });
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

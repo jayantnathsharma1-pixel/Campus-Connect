@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Campus Connect - Official Pass Slip</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            padding: 30px 15px;
+            margin: 0;
+        }
+
+        .top-nav-bar {
+            max-width: 550px;
+            margin: 0 auto 15px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #475569;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13.5px;
+            font-weight: bold;
+            transition: background 0.2s ease;
+        }
+
+        .btn-back:hover {
+            background: #1e293b;
+        }
+
+        .pass-card {
+            max-width: 550px;
+            margin: 0 auto;
+            background: white;
+            border: 2px solid #2563eb;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .pass-header {
+            text-align: center;
+            border-bottom: 2px dashed #cbd5e1;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .pass-header h1 {
+            margin: 0;
+            color: #2563eb;
+            font-size: 24px;
+        }
+
+        .pass-header p {
+            margin: 5px 0 0;
+            color: #64748b;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .pass-body table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .pass-body td {
+            padding: 11px 6px;
+            font-size: 15px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .pass-footer {
+            text-align: center;
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .status-stamp {
+            display: inline-block;
+            padding: 6px 14px;
+            background: #dcfce7;
+            color: #166534;
+            font-weight: bold;
+            border-radius: 6px;
+            border: 1px solid #86efac;
+            text-transform: uppercase;
+        }
+
+        .btn-print {
+            display: block;
+            width: 100%;
+            max-width: 220px;
+            margin: 22px auto 0;
+            padding: 10px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-print:hover {
+            background: #1d4ed8;
+        }
+
+        @media print {
+
+            .top-nav-bar,
+            .btn-print {
+                display: none !important;
+            }
+
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .pass-card {
+                border: 2px solid black;
+                box-shadow: none;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <!-- Top Action Bar with Back Button -->
+    <div class="top-nav-bar">
+        <a href="{{ url_for('student_dashboard') }}" class="btn-back">← Back to Dashboard</a>
+    </div>
+
+    <div class="pass-card">
+        <div class="pass-header">
+            <h1>Campus Connect</h1>
+            <p>OFFICIAL STUDENT GATE PASS / CLEARANCE SLIP</p>
+        </div>
+        <div class="pass-body">
+            <table>
+                <tbody>
+                    <tr>
+                        <td><strong>Student Name:</strong></td>
+                        <td>{{ student_name }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Student ID / Roll No:</strong></td>
+                        <td>{{ req.student_id }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pass Type:</strong></td>
+                        <td class="text-capitalize">{{ req.type.replace('_', ' ') }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Reason / Purpose:</strong></td>
+                        <td>{{ req.reason }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Issued / Logged Date:</strong></td>
+                        <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Verification Status:</strong></td>
+                        <td><span class="status-stamp">{{ req.status }}</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pass-footer">
+            <p>Show this digital or printed slip at the Main Campus Gate / Hostel Warden Office.</p>
+            <p>© 2026 Campus Connect Smart Operations</p>
+        </div>
+        <button type="button" class="btn-print" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Slip</button>
+    </div>
+</body>
+
+</html>

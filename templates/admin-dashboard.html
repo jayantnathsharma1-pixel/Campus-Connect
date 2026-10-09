@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Campus Connect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header class="dashboard-header">
+        <a href="{{ url_for('home') }}" class="logo" style="text-decoration: none;">
+            <span class="logo-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+                    <!-- Connection Lines -->
+                    <path d="M4 16L12 21L20 16" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 21V11" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="4" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="20" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="12" cy="21" r="1.5" fill="#3b82f6"/>
+                    <!-- Graduation Cap -->
+                    <path d="M12 3L2 8.5L12 14L22 8.5L12 3Z" fill="#3b82f6" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M22 8.5V14" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="22" cy="15" r="1.5" fill="#3b82f6"/>
+                </svg>
+            </span>
+            <span class="logo-text">Campus Connect</span>
+            <span class="badge" style="background: #ede9fe; color: #6b21a8; font-size: 13px; margin-left: 8px;">
+                <i class="fa-solid fa-building-columns"></i> {{ college_name }} ({{ college_id }})
+            </span>
+        </a>
+        <div class="admin-info">
+            <span>{{ name }} (Master Admin)</span>
+            <button class="theme-toggle-btn" id="themeToggle">
+                <span id="themeIcon"><i class="fa-solid fa-moon"></i></span> <span id="themeText">Dark</span>
+            </button>
+            
+            <button class="btn-submit" style="background: #3b82f6; border-radius: 20px; padding: 6px 15px; font-size: 13px;" onclick="openModal('editProfileModal')">
+                <i class="fa-solid fa-user-pen"></i> Edit Profile
+            </button>
+<a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <h1>{{ college_name }} - Administration Registry</h1>
+        <p class="welcome-text">Institutional Management Console (College ID: <strong>{{ college_id }}</strong>). Direct student admissions, staff appointments, timetable and services.</p>
+
+        <!-- DISMISSIBLE ALERT NOTIFICATIONS WITH CLOSE (<i class="fa-solid fa-xmark"></i>) BUTTON -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert-msg {{ category }}">
+                        <span>{{ message }}</span>
+                        <button type="button" class="alert-close-btn" onclick="dismissAlert(this)" title="Dismiss message"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- COLLEGE LEADERSHIP INFO & HANDOVER CARD -->
+        <div class="admin-authority-card">
+            <div class="authority-flex-wrapper">
+                <div class="authority-text-block">
+                    <h2><i class="fa-solid fa-building-columns"></i> {{ college_name }} Core Authority (ID: {{ college_id }})</h2>
+                    <p>
+                        <strong>Current Master Admin:</strong> <span>{{ current_admin.name }} ({{ current_admin.email }})</span> | 
+                        <strong>Current Principal:</strong> <span>{{ current_principal.name if current_principal else 'Not Assigned' }} ({{ current_principal.email if current_principal else 'N/A' }})</span>
+                    </p>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn-action btn-edit" onclick="openModal('editCollegeNameModal')"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                    <button class="btn-handover" onclick="openModal('handoverModal')"><i class="fa-solid fa-rotate-right"></i> Handover Role to New Successor</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Overview Cards -->
+        <div class="stats-container">
+            <div class="stat-card stat-border-green">
+                <span class="stat-num">{{ stats.total_students }}</span>
+                <span class="stat-label">Enrolled Students</span>
+            </div>
+            <div class="stat-card stat-border-blue">
+                <span class="stat-num">{{ stats.pending_docs }}</span>
+                <span class="stat-label">Pending Certificates</span>
+            </div>
+            <div class="stat-card stat-border-yellow">
+                <span class="stat-num">{{ stats.total_feedbacks }}</span>
+                <span class="stat-label">Mess Feedbacks</span>
+            </div>
+            <div class="stat-card stat-border-red">
+                <span class="stat-num">{{ stats.open_complaints }}</span>
+                <span class="stat-label">Open Complaints</span>
+            </div>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="admin-top-actions">
+            <button class="btn-submit" style="background: #2563eb;" onclick="openModal('addStudentModal')"><i class="fa-solid fa-user-plus"></i> Direct Admit / Register New Student</button>
+            <button class="btn-submit" style="background: #16a34a;" onclick="openModal('addStaffModal')"><i class="fa-solid fa-chalkboard-user"></i> Onboard Faculty / Staff / HOD</button>
+            <button class="btn-submit" onclick="openModal('messageModal')"><i class="fa-solid fa-paper-plane"></i> Send Message (Specific / All)</button>
+        </div>
+
+        <!-- PLACEMENTS & INTERNSHIPS CONSOLE -->
+        <h2 style="margin-top: 30px;"><i class="fa-solid fa-briefcase"></i> Student Placements & Internships (Verification)</h2>
+        <div class="table-responsive" style="margin-bottom: 25px;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Branch & Year</th>
+                        <th>Company</th>
+                        <th>Role</th>
+                        <th>Type</th>
+                        <th>Package (LPA)</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in student_placements %}
+                    <tr>
+                        <td><strong>{{ p.student_name }}</strong></td>
+                        <td><span class="badge" style="background: #e0f2fe; color: #0284c7;">{{ p.branch }} • {{ p.year }}</span></td>
+                        <td>{{ p.company_name }}</td>
+                        <td>{{ p.role }}</td>
+                        <td><span class="badge" style="background: {% if p.type == 'Placement' %}#dcfce7; color: #15803d;{% else %}#fef3c7; color: #b45309;{% endif %}">{{ p.type }}</span></td>
+                        <td>{{ p.package_lpa }}</td>
+                        <td>
+                            {% if p.status == 'Verified' %}
+                            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: bold;"><i class="fa-solid fa-check-circle"></i> Verified</span>
+                            {% else %}
+                            <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: bold;"><i class="fa-solid fa-clock"></i> Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if p.status == 'Pending' %}
+                            <button class="btn-action btn-edit" type="button" style="background: #dcfce7; color: #15803d;"
+                                    onclick="window.location.href='{{ url_for('verify_placement', placement_id=p.id, status='Verified') }}'"><i class="fa-solid fa-check"></i> Verify</button>
+                            {% else %}
+                            <button class="btn-action btn-edit" type="button" style="background:#fef3c7; color:#b45309;"
+                                    onclick="window.location.href='{{ url_for('verify_placement', placement_id=p.id, status='Pending') }}'"><i class="fa-solid fa-undo"></i> Undo</button>
+                            {% endif %}
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('verify_placement', placement_id=p.id, status='Delete') }}', 'Delete this record permanently?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" style="text-align: center; color: var(--text-secondary);">No placement records submitted yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- <i class="fa-solid fa-calendar-days"></i> ACADEMIC ROUTINE & TIMETABLE CONTAINER (WITH LEFT-RIGHT SCROLLING) -->
+        <div class="timetable-card-container" style="margin: 30px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <h2 style="margin: 0; font-size: 20px;"><i class="fa-solid fa-calendar-days"></i> College Academic Routine (9:00 AM – 4:00 PM)</h2>
+                    <p style="margin: 4px 0 0; color: var(--text-secondary); font-size: 13px;">View or override daily 6 periods + 1-hour lunch break for any branch & year.</p>
+                </div>
+                <form method="GET" action="{{ url_for('admin_dashboard') }}" style="display: flex; gap: 10px; align-items: center;">
+                    <select name="branch" onchange="this.form.submit()" style="padding: 7px 12px; border-radius: 6px; font-weight: bold; background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color);">
+                        {% for b in branches %}
+                        <option value="{{ b }}" {% if b == selected_branch %}selected{% endif %}>{{ b }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="year" onchange="this.form.submit()" style="padding: 7px 12px; border-radius: 6px; font-weight: bold; background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color);">
+                        {% for y in years %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+
+            <!-- RESPONSIVE SCROLLABLE WRAPPER -->
+            <div class="table-responsive">
+                <table class="data-table" style="min-width: 900px;">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>09:00 - 10:00</th>
+                            <th>10:00 - 11:00</th>
+                            <th>11:00 - 12:00</th>
+                            <th style="background: var(--table-header-bg); text-align: center;">Lunch Break</th>
+                            <th>01:00 - 02:00</th>
+                            <th>02:00 - 03:00</th>
+                            <th>03:00 - 04:00</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in routine %}
+                        <tr>
+                            <td><strong>{{ r.day_name }}</strong></td>
+                            <td>{{ r.period1 }}</td>
+                            <td>{{ r.period2 }}</td>
+                            <td>{{ r.period3 }}</td>
+                            <td style="text-align: center; color: var(--text-secondary); font-weight: bold; font-size: 12px;"><i class="fa-solid fa-box-open"></i> Recess</td>
+                            <td>{{ r.period4 }}</td>
+                            <td>{{ r.period5 }}</td>
+                            <td>{{ r.period6 }}</td>
+                            <td>
+                                <button class="btn-action btn-edit" type="button"
+                                        onclick="openEditRoutineModal('{{ selected_branch }}', '{{ selected_year }}', '{{ r.day_name }}', '{{ r.period1 }}', '{{ r.period2 }}', '{{ r.period3 }}', '{{ r.period4 }}', '{{ r.period5 }}', '{{ r.period6 }}')"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 1. STUDENT CERTIFICATES -->
+        <h2><i class="fa-solid fa-file-contract"></i> Student Certificate & Document Requests ({{ doc_requests|length }})</h2>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Student Name</th>
+                        <th>Document Type</th>
+                        <th>Purpose / Reason</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in doc_requests %}
+                    <tr>
+                        <td><strong>{{ d.student_id }}</strong></td>
+                        <td>{{ d.student_name if d.student_name else d.student_id }}</td>
+                        <td style="text-transform: capitalize;"><strong>{{ d.doc_type.replace('_', ' ') }}</strong></td>
+                        <td>{{ d.purpose }}</td>
+                        <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td><span class="badge {{ d.status }}">{{ d.status.replace('_', ' ') }}</span></td>
+                        <td>
+                            {% if d.status == 'Pending Admin' %}
+                            <a href="{{ url_for('update_doc_request', doc_id=d.id, status='Approved') }}" class="btn-submit" style="padding: 4px 8px; font-size: 12px; text-decoration: none; background: #16a34a; margin-right: 4px;">Approve & Issue</a>
+                            <a href="{{ url_for('update_doc_request', doc_id=d.id, status='rejected') }}" style="color: #dc2626; font-weight: bold; text-decoration: none; font-size: 12px; margin-right: 4px;">Reject</a>
+                            {% elif d.status == 'Approved' %}
+                            <a href="{{ url_for('update_doc_request', doc_id=d.id, status='ready_to_collect') }}" style="color: #0284c7; font-weight: bold; text-decoration: none; font-size: 12px; margin-right: 4px;">Ready to Collect</a>
+                            {% endif %}
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('delete_doc_request', doc_id=d.id) }}', 'Are you sure you want to delete this certificate application record?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">No certificate requests submitted by students.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 2. STUDENT HOSTEL MESS RATINGS -->
+        <h2 style="margin-top: 40px;"><i class="fa-solid fa-utensils"></i> Student Hostel Mess Ratings & Feedbacks ({{ feedbacks|length }})</h2>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Student Name</th>
+                        <th>Day of Week</th>
+                        <th>Meal Category</th>
+                        <th>Rating</th>
+                        <th>Remarks / Suggestions</th>
+                        <th>Submitted Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in feedbacks %}
+                    <tr>
+                        <td><strong>{{ f.student_id }}</strong></td>
+                        <td>{{ f.student_name if f.student_name else f.student_id }}</td>
+                        <td>
+                            <span class="badge" style="background: #fef08a; color: #854d0e; font-weight: bold;">
+                                <i class="fa-solid fa-calendar-days"></i> {{ f.day_name if f.day_name else 'Today' }}
+                            </span>
+                        </td>
+                        <td style="text-transform: capitalize;">
+                            <strong>
+                                {% if f.meal_type == 'breakfast' %}<i class="fa-solid fa-egg"></i> Breakfast
+                                {% elif f.meal_type == 'lunch' %}<i class="fa-solid fa-bowl-rice"></i> Lunch
+                                {% elif f.meal_type == 'snacks' %}<i class="fa-solid fa-mug-hot"></i> Snacks
+                                {% elif f.meal_type == 'dinner' %}<i class="fa-solid fa-bowl-food"></i> Dinner
+                                {% else %}{{ f.meal_type }}
+                                {% endif %}
+                            </strong>
+                        </td>
+                        <td><span style="color: #f59e0b; font-weight: bold;">{{ f.rating }} / 5 <i class="fa-solid fa-star"></i></span></td>
+                        <td>{{ f.comment if f.comment else 'No remarks given' }}</td>
+                        <td>{{ f.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('delete_feedback', fb_id=f.id) }}', 'Are you sure you want to remove this mess feedback entry?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" style="text-align: center; color: var(--text-secondary);">No mess feedbacks submitted yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 3. ENROLLED STUDENTS DIRECTORY (SHOWS 3 BY DEFAULT + VIEW MORE) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 45px; margin-bottom: 12px; flex-wrap: wrap; gap: 15px;">
+            <h2 style="margin: 0;"><i class="fa-solid fa-user-graduate"></i> Enrolled Students Directory (Total: {{ all_students|length }})</h2>
+            
+            <div style="position: relative; min-width: 290px;">
+                <input type="text" id="studentSearchInput" onkeyup="filterStudents()" placeholder="Search student name, roll no, branch..." style="width: 100%; padding: 8px 14px; border: 1.5px solid #2563eb; border-radius: 25px; font-size: 13.5px; outline: none; background: var(--input-bg); color: var(--input-text);">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table" id="studentDataTable">
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Roll No / User ID</th>
+                        <th>Full Name</th>
+                        <th>Branch & Year</th>
+                        <th>Parents Name</th>
+                        <th>Contact & ID</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for st in all_students %}
+                    <tr class="student-row" {% if loop.index > 3 %}style="display: none;"{% endif %}>
+                        <td>
+                            {% if st.photo_url %}
+                            <img src="{{ st.photo_url }}" alt="Photo" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb;">
+                            {% else %}
+                            <span style="font-size: 24px;"><i class="fa-solid fa-user-graduate"></i></span>
+                            {% endif %}
+                        </td>
+                        <td class="student-id-cell"><strong>{{ st.user_id }}</strong></td>
+                        <td class="student-name-cell">{{ st.name }}<br><small style="color: var(--text-secondary);">{{ st.email }}</small></td>
+                        <td><span class="badge" style="background: #e0f2fe; color: #0284c7; font-weight: bold;">{{ st.branch if st.branch else 'CSE' }}</span> • {{ st.year if st.year else '1st Year' }}</td>
+                        <td>
+                            <small><strong>F:</strong> {{ st.father_name if st.father_name else 'N/A' }}</small><br>
+                            <small><strong>M:</strong> {{ st.mother_name if st.mother_name else 'N/A' }}</small>
+                        </td>
+                        <td>
+                            <small><i class="fa-solid fa-phone"></i> {{ st.phone if st.phone else 'N/A' }}</small><br>
+                            <small><i class="fa-solid fa-id-card"></i> {{ '[Verified]' if st.aadhaar else 'N/A' }}</small>
+                        </td>
+                        <td>
+                            <button class="btn-action btn-edit" type="button"
+                                    onclick="openEditStudentModal('{{ st.user_id }}', '{{ st.name }}', '{{ st.email }}', '{{ st.branch }}', '{{ st.year }}', '{{ st.phone }}', '{{ st.aadhaar }}', '{{ st.bank_account }}', '{{ st.father_name }}', '{{ st.mother_name }}', '{{ st.password }}')"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('delete_user', user_id=st.user_id) }}', 'PERMANENT ACTION: Are you sure you want to completely delete student record for {{ st.name }} ({{ st.user_id }})?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">No students registered in campus portal.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if all_students|length > 3 %}
+        <div style="text-align: center; margin-top: 10px; margin-bottom: 25px;">
+            <button type="button" id="btnToggleAdminStudents" class="btn-submit" style="background: #2563eb; font-size: 13px; padding: 8px 22px; border-radius: 20px;" onclick="toggleTableRows('student-row', 'btnToggleAdminStudents', 3)">
+                <i class="fa-solid fa-eye"></i> View More (Show All {{ all_students|length }} Students)
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- 4. FACULTY, STAFF & EXAM CELL DIRECTORY (SHOWS 3 BY DEFAULT + VIEW MORE) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 45px; margin-bottom: 12px; flex-wrap: wrap; gap: 15px;">
+            <h2 style="margin: 0;"><i class="fa-solid fa-user-tie"></i> Campus Faculty, Staff & Examination Cell (Total: {{ all_staff|length }})</h2>
+            
+            <div style="position: relative; min-width: 290px;">
+                <input type="text" id="designationSearchInput" onkeyup="filterByDesignation()" placeholder="Search designation (e.g. Teacher, HOD, Warden)..." style="width: 100%; padding: 8px 14px; border: 1.5px solid #0284c7; border-radius: 25px; font-size: 13.5px; outline: none; background: var(--input-bg); color: var(--input-text);">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table" id="staffDataTable">
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Staff ID</th>
+                        <th>Full Name</th>
+                        <th>Designation & Department</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Bank Account</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for st in all_staff %}
+                    <tr class="staff-row" {% if loop.index > 3 %}style="display: none;"{% endif %}>
+                        <td>
+                            {% if st.photo_url %}
+                            <img src="{{ st.photo_url }}" alt="Photo" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #16a34a;">
+                            {% else %}
+                            <span style="font-size: 24px;"><i class="fa-solid fa-user"></i></span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ st.user_id }}</strong></td>
+                        <td>{{ st.name }}</td>
+                        <td class="staff-designation-cell">
+                            {% if st.designation == 'Principal' %}
+                            <span class="badge" style="background: #fef08a; color: #854d0e; font-weight: 800;"><i class="fa-solid fa-crown"></i> Principal</span>
+                            {% elif st.designation == 'Head of Department (HOD)' %}
+                            <span class="badge" style="background: #ede9fe; color: #6b21a8; font-weight: 800;"><i class="fa-solid fa-medal"></i> HOD ({{ st.branch if st.branch else 'General' }})</span>
+                            {% elif st.designation == 'Examination Cell / Controller' %}
+                            <span class="badge" style="background: #fae8ff; color: #86198f; font-weight: 800;"><i class="fa-solid fa-pen-to-square"></i> Examination Cell</span>
+                            {% elif st.designation == 'Hostel Warden' %}
+                            <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: 800;"><i class="fa-solid fa-building"></i> Hostel Warden</span>
+                            {% elif st.designation == 'Electrician' %}
+                            <span class="badge" style="background: #fefce8; color: #854d0e; font-weight: 800;"><i class="fa-solid fa-bolt"></i> Electrician</span>
+                            {% else %}
+                            <span class="badge" style="background: #e0f2fe; color: #0284c7;">{{ st.designation if st.designation else 'Staff' }}{% if st.branch %} ({{ st.branch }}){% endif %}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ st.phone if st.phone else 'N/A' }}</td>
+                        <td>{{ st.email }}</td>
+                        <td><small>{{ st.bank_account if st.bank_account else 'N/A' }}</small></td>
+                        <td>
+                            <button class="btn-action btn-edit" type="button"
+                                    onclick="openEditStaffModal('{{ st.user_id }}', '{{ st.name }}', '{{ st.email }}', '{{ st.designation }}', '{{ st.branch if st.branch else '' }}', '{{ st.phone }}', '{{ st.aadhaar }}', '{{ st.bank_account }}', '{{ st.password }}')"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+
+                            {% if st.designation == 'Principal' %}
+                            <span style="color: #7c3aed; font-size: 12px; font-weight: bold;">Use Handover</span>
+                            {% else %}
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('delete_user', user_id=st.user_id) }}', 'PERMANENT ACTION: Are you sure you want to completely delete faculty/staff member {{ st.name }} ({{ st.user_id }})?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr id="noStaffFoundRow"><td colspan="8" style="text-align: center; color: var(--text-secondary);">No staff members onboarded yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if all_staff|length > 3 %}
+        <div style="text-align: center; margin-top: 10px; margin-bottom: 25px;">
+            <button type="button" id="btnToggleAdminStaff" class="btn-submit" style="background: #16a34a; font-size: 13px; padding: 8px 22px; border-radius: 20px;" onclick="toggleTableRows('staff-row', 'btnToggleAdminStaff', 3)">
+                <i class="fa-solid fa-eye"></i> View More (Show All {{ all_staff|length }} Staff Members)
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- 5. STUDENT COMPLAINTS (ADMIN FORWARD TO ELECTRICIAN FEATURE) -->
+        <h2 style="margin-top: 40px;"><i class="fa-solid fa-bullhorn"></i> Student Electrical & Repair Complaints (Forward to Electrician)</h2>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Title & Issue</th>
+                        <th>Ageing (Days)</th>
+                        <th>Status</th>
+                        <th>Forward to Electrician / Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in complaints %}
+                    <tr {% if c.is_urgent %}class="urgent-row"{% endif %}>
+                        <td><strong>{{ c.student_name }}</strong><br><small>{{ c.student_id }}</small></td>
+                        <td><strong>{{ c.title }}</strong><br><small style="color: var(--text-secondary);">{{ c.description }}</small></td>
+                        <td><strong>{{ c.age_days }} day(s) ago</strong></td>
+                        <td>
+                            {% if c.status == 'resolved' %}
+                            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: bold;"><i class="fa-solid fa-circle-check"></i> Resolved</span>
+                            {% elif c.status == 'forwarded_to_electrician' %}
+                            <span class="badge" style="background: #e0f2fe; color: #0284c7; font-weight: bold;"><i class="fa-solid fa-bolt"></i> Forwarded to Electrician</span>
+                            {% else %}
+                            <span class="badge pending"><i class="fa-solid fa-hourglass-half"></i> Pending Review</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <form action="{{ url_for('forward_complaint_to_electrician', comp_id=c.id) }}" method="POST" style="display: flex; gap: 6px; align-items: center;">
+                                    <select name="electrician_id" required style="padding: 4px 8px; font-size: 12px; border-radius: 4px; background: var(--input-bg); color: var(--input-text); border: 1px solid var(--input-border);">
+                                        <option value="">-- Select Electrician --</option>
+                                        {% for el in electricians %}
+                                        <option value="{{ el.user_id }}">{{ el.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="text" name="forward_remarks" placeholder="Instructions..." required style="padding: 4px 8px; font-size: 12px; border-radius: 4px; border: 1px solid var(--input-border); width: 110px; background: var(--input-bg); color: var(--input-text);">
+                                    <button type="submit" class="btn-submit" style="padding: 5px 10px; font-size: 12px; background: #2563eb;">Send</button>
+                                </form>
+
+                                <button class="btn-action btn-delete" type="button"
+                                        onclick="confirmCustomDelete('{{ url_for('delete_complaint', comp_id=c.id) }}', 'Are you sure you want to delete this complaint record?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No complaints filed.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 6. NOTICES & DIRECT MESSAGES -->
+        <h2 style="margin-top: 45px;">Sent Notices & Direct Messages</h2>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Recipient</th>
+                        <th>Heading</th>
+                        <th>Content</th>
+                        <th>Sent Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for n in notices %}
+                    <tr>
+                        <td>
+                            {% if n.recipient_id == user_id %}
+                            <span class="badge" style="background: #fef08a; color: #854d0e;"><i class="fa-solid fa-lock"></i> Direct to Admin</span>
+                            {% elif n.recipient_id %}
+                            <span class="badge" style="background: #e0f2fe; color: #0284c7;">To: {{ n.recipient_id }}</span>
+                            {% else %}
+                            <span class="badge notice-badge">{{ n.category if n.category else 'All Campus' }}</span>
+                            {% endif %}
+                            <br><small style="color: var(--text-secondary);">From: {{ n.posted_by }}</small>
+                        </td>
+                        <td><strong>{{ n.title }}</strong></td>
+                        <td>{{ n.description }}</td>
+                        <td>{{ n.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('delete_notice', notice_id=n.id) }}', 'Delete this campus announcement/notice?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No notices or messages sent yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- MODAL: EDIT COLLEGE PROFILE (RENAME COLLEGE) -->
+    <div id="editCollegeNameModal" class="modal">
+        <div class="modal-content" style="max-width: 460px;">
+            <h3><i class="fa-solid fa-building-columns"></i> Edit Institution Official Name</h3>
+            <p class="modal-subtext">Update your registered college branding:</p>
+            <form action="{{ url_for('update_college_profile') }}" method="POST">
+                <label>College ID (Fixed Code):</label>
+                <input type="text" value="{{ college_id }}" readonly style="background: var(--table-header-bg); font-weight: bold;">
+
+                <label>College Full Legal Name:</label>
+                <input type="text" name="college_name" value="{{ college_name }}" required>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('editCollegeNameModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #0284c7;"><i class="fa-solid fa-floppy-disk"></i> Save College Name</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CUSTOM THEMED CONFIRM DELETE MODAL -->
+    <div id="customDeleteModal" class="modal">
+        <div class="modal-content custom-confirm-card">
+            <div class="confirm-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <h3>Confirm Delete Action</h3>
+            <p id="customDeleteMessage">Are you sure you want to permanently delete this record? This action cannot be undone.</p>
+            <div style="display: flex; justify-content: center; gap: 12px;">
+                <button type="button" class="btn-close" onclick="closeCustomDeleteModal()">Cancel</button>
+                <button class="btn-action btn-delete" type="button" id="customDeleteConfirmBtn"><i class="fa-solid fa-trash"></i> Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: DIRECT ADMIT NEW STUDENT -->
+    <div id="addStudentModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fa-solid fa-user-plus"></i> Direct Admit Student to {{ college_name }}</h3>
+            <p class="modal-subtext">Fill details, send verification OTP to student's Gmail, enter OTP, and admit:</p>
+            <form action="{{ url_for('add_student') }}" method="POST" enctype="multipart/form-data">
+                
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Roll Number / Student ID:</label>
+                        <input type="text" name="userId" placeholder="e.g. 2501329046" required>
+                    </div>
+                    <div>
+                        <label>Full Legal Name:</label>
+                        <input type="text" id="stu_name_input" name="name" placeholder="Student's full name" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label>Student Email Address (For Live OTP Verification):</label>
+                    <div class="email-otp-flex">
+                        <input type="email" id="stu_email_input" name="email" placeholder="student@gmail.com" required>
+                        <button type="button" id="btnSendStuOtp" onclick="sendModalOtp('stu_email_input', 'stu_name_input', 'btnSendStuOtp', 'stuOtpStatus')" class="otp-send-btn">
+                            <i class="fa-solid fa-envelope"></i> Send OTP
+                        </button>
+                    </div>
+                    <small id="stuOtpStatus" style="display: block; margin-top: 3px; font-weight: bold;"></small>
+                </div>
+
+                <div class="otp-box-highlight">
+                    <label><i class="fa-solid fa-key"></i> Enter 6-Digit Verification OTP (Received on Student's Email):</label>
+                    <input type="text" name="email_otp" placeholder="Enter 6-digit OTP (e.g. 748291)" maxlength="6" required>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Contact Phone / Mobile:</label>
+                        <input type="tel" name="phone" placeholder="10-digit mobile number" required>
+                    </div>
+                    <div>
+                        <label>Select Branch:</label>
+                        <select name="branch" required>
+                            {% for b in branches %}
+                            <option value="{{ b }}">{{ b }} Engineering</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Academic Year:</label>
+                        <select name="year" required>
+                            {% for y in years %}
+                            <option value="{{ y }}">{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label>Identity Document Number:</label>
+                        <input type="text" name="aadhaar" placeholder="Identity Document Number" required>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Father's Name:</label>
+                        <input type="text" name="father_name" placeholder="Enter father's full name" required>
+                    </div>
+                    <div>
+                        <label>Mother's Name:</label>
+                        <input type="text" name="mother_name" placeholder="Enter mother's full name" required>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Bank Account Number:</label>
+                        <input type="text" name="bank_account" placeholder="Account for scholarship/fees" required>
+                    </div>
+                    <div>
+                        <label>Initial Login Password:</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="addStuPassword" name="password" placeholder="Assign initial password" required>
+                            <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('addStuPassword', 'stuPassEyeIcon')" title="Show/Hide Password" aria-label="Toggle password visibility">
+                                <span id="stuPassEyeIcon">
+                                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <label>Student Photo (Select from Folder):</label>
+                <input type="file" name="photo" accept="image/*">
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('addStudentModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #2563eb;">Verify OTP & Admit Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ONBOARD NEW STAFF / EXAM CELL / HOD -->
+    <div id="addStaffModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fa-solid fa-chalkboard-user"></i> Onboard Faculty / Staff to {{ college_name }}</h3>
+            <p class="modal-subtext">Fill appointment details, send OTP to staff email, enter OTP, and onboard:</p>
+            <form action="{{ url_for('add_staff') }}" method="POST" enctype="multipart/form-data">
+                
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Staff / Employee ID:</label>
+                        <input type="text" name="userId" placeholder="e.g. prof01 / hod_cse" required>
+                    </div>
+                    <div>
+                        <label>Designation / Post:</label>
+                        <select id="add_staff_desig" name="designation" onchange="toggleBranchField('add_staff_desig', 'add_branch_wrapper')" required>
+                            {% for d in designations %}
+                            <option value="{{ d }}">{{ d }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div id="add_branch_wrapper" style="margin-bottom: 8px;">
+                    <label style="color: #7c3aed; font-weight: bold;"><i class="fa-solid fa-building"></i> Department / Branch (For HOD & Department Faculty):</label>
+                    <select name="branch" style="border: 1.5px solid #7c3aed; background: var(--bg-card); font-weight: bold;">
+                        <option value="">-- None / General College Staff --</option>
+                        {% for b in branches %}
+                        <option value="{{ b }}">{{ b }} Department</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Full Legal Name:</label>
+                        <input type="text" id="staff_name_input" name="name" placeholder="Full legal name" required>
+                    </div>
+                    <div>
+                        <label>Contact Phone Number:</label>
+                        <input type="tel" name="phone" placeholder="10-digit mobile" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label>Official Email Address (For Live OTP Verification):</label>
+                    <div class="email-otp-flex">
+                        <input type="email" id="staff_email_input" name="email" placeholder="official@gmail.com" required>
+                        <button type="button" id="btnSendStaffOtp" onclick="sendModalOtp('staff_email_input', 'staff_name_input', 'btnSendStaffOtp', 'staffOtpStatus')" class="otp-send-btn">
+                            <i class="fa-solid fa-envelope"></i> Send OTP
+                        </button>
+                    </div>
+                    <small id="staffOtpStatus" style="display: block; margin-top: 3px; font-weight: bold;"></small>
+                </div>
+
+                <div class="otp-box-highlight">
+                    <label><i class="fa-solid fa-key"></i> Enter 6-Digit Verification OTP (Received on Staff's Email):</label>
+                    <input type="text" name="email_otp" placeholder="Enter 6-digit OTP (e.g. 918234)" maxlength="6" required>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Identity Document Number:</label>
+                        <input type="text" name="aadhaar" placeholder="Identity Document Number" required>
+                    </div>
+                    <div>
+                        <label>Bank Account Number:</label>
+                        <input type="text" name="bank_account" placeholder="Account for salary" required>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Initial Login Password:</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="addStaffPassword" name="password" placeholder="Assign password" required>
+                            <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('addStaffPassword', 'staffPassEyeIcon')" title="Show/Hide Password" aria-label="Toggle password visibility">
+                                <span id="staffPassEyeIcon">
+                                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label>Staff Photo (Select from Folder):</label>
+                        <input type="file" name="photo" accept="image/*">
+                    </div>
+                </div>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('addStaffModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #16a34a;">Verify OTP & Grant Access</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: HANDOVER ROLE -->
+    <div id="handoverModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fa-solid fa-rotate-right"></i> Official Role Handover / Transfer</h3>
+            <p class="modal-subtext">Transfer authority to new official successor with real-time Email OTP verification:</p>
+            <form action="{{ url_for('transfer_role') }}" method="POST">
+                <label>Select Authority Position to Transfer:</label>
+                <select name="transfer_type" required style="font-weight: bold; color: #7c3aed;">
+                    <option value="principal">Handover Principal Position</option>
+                    <option value="admin">️ Handover Master Admin Account</option>
+                </select>
+
+                <label>New Official Full Legal Name:</label>
+                <input type="text" id="handover_name_input" name="new_name" placeholder="Enter new official's name" required>
+
+                <div>
+                    <label>New Official Registered Email (For Verification OTP):</label>
+                    <div class="email-otp-flex">
+                        <input type="email" id="handover_email_input" name="new_email" placeholder="new.official@gmail.com" required>
+                        <button type="button" id="btnSendHandoverOtp" onclick="sendModalOtp('handover_email_input', 'handover_name_input', 'btnSendHandoverOtp', 'handoverOtpStatus')" class="otp-send-btn">
+                            <i class="fa-solid fa-envelope"></i> Send OTP
+                        </button>
+                    </div>
+                    <small id="handoverOtpStatus" style="display: block; margin-top: 3px; font-weight: bold;"></small>
+                </div>
+
+                <div class="otp-box-highlight">
+                    <label><i class="fa-solid fa-key"></i> Enter 6-Digit Verification OTP (Received on Successor's Email):</label>
+                    <input type="text" name="email_otp" placeholder="Enter 6-digit OTP (e.g. 529183)" maxlength="6" required>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Contact Phone Number:</label>
+                        <input type="tel" name="new_phone" placeholder="10-digit mobile" required>
+                    </div>
+                    <div>
+                        <label>Identity Document Number (Optional):</label>
+                        <input type="text" name="new_aadhaar" placeholder="Identity Document Number">
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Bank Account (Optional):</label>
+                        <input type="text" name="new_bank" placeholder="Salary account">
+                    </div>
+                    <div>
+                        <label>Set Login Password for Successor:</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="handoverPassword" name="new_password" placeholder="Create strong password" required>
+                            <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('handoverPassword', 'handoverPassEyeIcon')" title="Show/Hide Password" aria-label="Toggle password visibility">
+                                <span id="handoverPassEyeIcon">
+                                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('handoverModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #7c3aed;">Verify OTP & Transfer Authority</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: EDIT STUDENT DETAILS -->
+    <div id="editStudentModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fa-solid fa-pen-to-square"></i> Edit Student Profile Details</h3>
+            <p class="modal-subtext">Update student's academic credentials, contact, parent details or password:</p>
+            <form action="{{ url_for('edit_student') }}" method="POST" enctype="multipart/form-data">
+                
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Roll Number / Student ID (Read Only):</label>
+                        <input type="text" id="edit_stu_id" name="userId" readonly style="background: var(--table-header-bg); font-weight: bold;">
+                    </div>
+                    <div>
+                        <label>Full Legal Name:</label>
+                        <input type="text" id="edit_stu_name" name="name" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label>Student Email Address:</label>
+                    <input type="email" id="edit_stu_email" name="email" required>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Contact Phone / Mobile:</label>
+                        <input type="tel" id="edit_stu_phone" name="phone" required>
+                    </div>
+                    <div>
+                        <label>Select Branch:</label>
+                        <select id="edit_stu_branch" name="branch" required>
+                            {% for b in branches %}
+                            <option value="{{ b }}">{{ b }} Engineering</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Academic Year:</label>
+                        <select id="edit_stu_year" name="year" required>
+                            {% for y in years %}
+                            <option value="{{ y }}">{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label>Identity Document Number:</label>
+                        <input type="text" id="edit_stu_aadhaar" name="aadhaar" required>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Father's Name:</label>
+                        <input type="text" id="edit_stu_father" name="father_name" required>
+                    </div>
+                    <div>
+                        <label>Mother's Name:</label>
+                        <input type="text" id="edit_stu_mother" name="mother_name" required>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Bank Account Number:</label>
+                        <input type="text" id="edit_stu_bank" name="bank_account" required>
+                    </div>
+                    <div>
+                        <label>Login Password:</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="edit_stu_password" name="password" required>
+                            <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('edit_stu_password', 'editStuPassEyeIcon')" title="Show/Hide Password" aria-label="Toggle password visibility">
+                                <span id="editStuPassEyeIcon">
+                                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <label>Change Photo (Optional):</label>
+                <input type="file" name="photo" accept="image/*">
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('editStudentModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #0284c7;"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 5: EDIT STAFF DETAILS -->
+    <div id="editStaffModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fa-solid fa-pen-to-square"></i> Edit Faculty / Staff Profile Details</h3>
+            <p class="modal-subtext">Update designation, branch/department, contact, salary account or password:</p>
+            <form action="{{ url_for('edit_staff') }}" method="POST" enctype="multipart/form-data">
+                
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Staff / Employee ID (Read Only):</label>
+                        <input type="text" id="edit_staff_id" name="userId" readonly style="background: var(--table-header-bg); font-weight: bold;">
+                    </div>
+                    <div>
+                        <label>Designation / Post:</label>
+                        <select id="edit_staff_desig" name="designation" onchange="toggleBranchField('edit_staff_desig', 'edit_branch_wrapper')" required>
+                            {% for d in designations %}
+                            <option value="{{ d }}">{{ d }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div id="edit_branch_wrapper" style="margin-bottom: 8px;">
+                    <label style="color: #7c3aed; font-weight: bold;"><i class="fa-solid fa-building"></i> Department / Branch (For HOD & Teachers):</label>
+                    <select id="edit_staff_branch" name="branch" style="border: 1.5px solid #7c3aed; background: var(--bg-card); font-weight: bold;">
+                        <option value="">-- None / General College Staff --</option>
+                        {% for b in branches %}
+                        <option value="{{ b }}">{{ b }} Department</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Full Legal Name:</label>
+                        <input type="text" id="edit_staff_name" name="name" required>
+                    </div>
+                    <div>
+                        <label>Contact Phone Number:</label>
+                        <input type="tel" id="edit_staff_phone" name="phone" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label>Official Email Address:</label>
+                    <input type="email" id="edit_staff_email" name="email" required>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Identity Document Number:</label>
+                        <input type="text" id="edit_staff_aadhaar" name="aadhaar" required>
+                    </div>
+                    <div>
+                        <label>Bank Account Number:</label>
+                        <input type="text" id="edit_staff_bank" name="bank_account" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label>Login Password:</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="edit_staff_password" name="password" required>
+                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('edit_staff_password', 'editStaffPassEyeIcon')" title="Show/Hide Password" aria-label="Toggle password visibility">
+                            <span id="editStaffPassEyeIcon">
+                                <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <label>Change Photo (Optional):</label>
+                <input type="file" name="photo" accept="image/*">
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('editStaffModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #0284c7;"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 6: EDIT TIMETABLE ROUTINE -->
+    <div id="editRoutineModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fa-solid fa-calendar-days"></i> Edit Class Timetable Routine (9 AM - 4 PM)</h3>
+            <p class="modal-subtext">Update period allocations for the selected day:</p>
+            <form action="{{ url_for('update_timetable_entry') }}" method="POST">
+                <input type="hidden" id="routine_branch" name="branch">
+                <input type="hidden" id="routine_year" name="year">
+
+                <label>Day of Week:</label>
+                <input type="text" id="routine_day" name="day_name" readonly style="background: var(--table-header-bg); font-weight: bold;">
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Period 1 (09:00 - 10:00 AM):</label>
+                        <input type="text" id="routine_p1" name="period1" required>
+                    </div>
+                    <div>
+                        <label>Period 2 (10:00 - 11:00 AM):</label>
+                        <input type="text" id="routine_p2" name="period2" required>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Period 3 (11:00 - 12:00 PM):</label>
+                        <input type="text" id="routine_p3" name="period3" required>
+                    </div>
+                    <div>
+                        <label>Period 4 (01:00 - 02:00 PM):</label>
+                        <input type="text" id="routine_p4" name="period4" required>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Period 5 (02:00 - 03:00 PM):</label>
+                        <input type="text" id="routine_p5" name="period5" required>
+                    </div>
+                    <div>
+                        <label>Period 6 (03:00 - 04:00 PM):</label>
+                        <input type="text" id="routine_p6" name="period6" required>
+                    </div>
+                </div>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('editRoutineModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #7c3aed;"><i class="fa-solid fa-floppy-disk"></i> Update Routine</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 7: SEND MESSAGE -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content" style="max-width: 520px;">
+            <h3><i class="fa-solid fa-envelope"></i> Dispatch Direct Message or Notice</h3>
+            <form action="{{ url_for('send_message') }}" method="POST">
+                <label>Select Recipient (Specific Student / Staff or All Campus):</label>
+                <select name="recipient_id" required>
+                    <option value="all">All Campus (Everyone)</option>
+                    <optgroup label="Direct Message to a Specific Student">
+                        {% for s in all_students %}
+                        <option value="{{ s.user_id }}">{{ s.name }} ({{ s.branch }} - {{ s.year }}) - Roll: {{ s.user_id }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="Direct Message to Faculty / Staff">
+                        {% for st in all_staff %}
+                        <option value="{{ st.user_id }}">{{ st.name }} ({{ st.designation }}) - ID: {{ st.user_id }}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+
+                <label>Subject / Heading:</label>
+                <input type="text" name="title" required placeholder="Subject...">
+
+                <label>Message Content:</label>
+                <textarea name="description" rows="3" required placeholder="Type your confidential memo or public notice here..."></textarea>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('messageModal')">Cancel</button>
+                    <button type="submit" class="btn-submit">Dispatch Message</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    
+
+    <footer>
+        <p>© 2026 {{ college_name }} | Powered by Campus Connect</p>
+    </footer>
+
+    <!-- REAL-TIME FILTER SCRIPTS -->
+    <script>
+        function filterStudents() {
+            var input = document.getElementById("studentSearchInput");
+            var filter = input.value.toLowerCase().trim();
+            var rows = document.getElementsByClassName("student-row");
+
+            for (var i = 0; i < rows.length; i++) {
+                var nameCell = rows[i].getElementsByClassName("student-name-cell")[0];
+                var idCell = rows[i].getElementsByClassName("student-id-cell")[0];
+                var rowText = "";
+                if (nameCell) rowText += nameCell.textContent || nameCell.innerText;
+                if (idCell) rowText += " " + (idCell.textContent || idCell.innerText);
+
+                if (rowText.toLowerCase().indexOf(filter) > -1) {
+                    rows[i].style.display = "";
+                } else {
+                    rows[i].style.display = "none";
+                }
+            }
+        }
+
+        function filterByDesignation() {
+            var input = document.getElementById("designationSearchInput");
+            var filter = input.value.toLowerCase().trim();
+            var rows = document.getElementsByClassName("staff-row");
+
+            for (var i = 0; i < rows.length; i++) {
+                var desigCell = rows[i].getElementsByClassName("staff-designation-cell")[0];
+                if (desigCell) {
+                    var textValue = desigCell.textContent || desigCell.innerText;
+                    if (textValue.toLowerCase().indexOf(filter) > -1) {
+                        rows[i].style.display = "";
+                    } else {
+                        rows[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        function toggleBranchField(desigSelectId, wrapperId) {
+            var desig = document.getElementById(desigSelectId).value;
+            var wrapper = document.getElementById(wrapperId);
+            if (desig === 'Head of Department (HOD)') {
+                wrapper.style.display = "block";
+            }
+        }
+
+        function openEditStudentModal(id, name, email, branch, year, phone, aadhaar, bank, father, mother, password) {
+            document.getElementById('edit_stu_id').value = id;
+            document.getElementById('edit_stu_name').value = name;
+            document.getElementById('edit_stu_email').value = email;
+            document.getElementById('edit_stu_branch').value = branch;
+            document.getElementById('edit_stu_year').value = year;
+            document.getElementById('edit_stu_phone').value = phone;
+            document.getElementById('edit_stu_aadhaar').value = aadhaar;
+            document.getElementById('edit_stu_bank').value = bank;
+            document.getElementById('edit_stu_father').value = father;
+            document.getElementById('edit_stu_mother').value = mother;
+            document.getElementById('edit_stu_password').value = password;
+            openModal('editStudentModal');
+        }
+
+        function openEditStaffModal(id, name, email, desig, branch, phone, aadhaar, bank, password) {
+            document.getElementById('edit_staff_id').value = id;
+            document.getElementById('edit_staff_name').value = name;
+            document.getElementById('edit_staff_email').value = email;
+            document.getElementById('edit_staff_desig').value = desig;
+            document.getElementById('edit_staff_branch').value = branch || '';
+            document.getElementById('edit_staff_phone').value = phone;
+            document.getElementById('edit_staff_aadhaar').value = aadhaar;
+            document.getElementById('edit_staff_bank').value = bank;
+            document.getElementById('edit_staff_password').value = password;
+            openModal('editStaffModal');
+        }
+
+        function openEditRoutineModal(branch, year, day, p1, p2, p3, p4, p5, p6) {
+            document.getElementById('routine_branch').value = branch;
+            document.getElementById('routine_year').value = year;
+            document.getElementById('routine_day').value = day;
+            document.getElementById('routine_p1').value = p1;
+            document.getElementById('routine_p2').value = p2;
+            document.getElementById('routine_p3').value = p3;
+            document.getElementById('routine_p4').value = p4;
+            document.getElementById('routine_p5').value = p5;
+            document.getElementById('routine_p6').value = p6;
+            openModal('editRoutineModal');
+        }
+
+        function sendModalOtp(emailInputId, nameInputId, btnId, statusElemId) {
+            var emailVal = document.getElementById(emailInputId).value.trim();
+            var nameVal = document.getElementById(nameInputId).value.trim();
+            var statusElem = document.getElementById(statusElemId);
+            var btn = document.getElementById(btnId);
+
+            if (!emailVal) {
+                alert("Please enter email address first!");
+                document.getElementById(emailInputId).focus();
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> Sending...';
+            statusElem.style.color = "#0284c7";
+            statusElem.innerText = "Sending verification OTP to " + emailVal + "...";
+
+            var formData = new FormData();
+            formData.append("email", emailVal);
+            formData.append("name", nameVal);
+
+            fetch("/send-onboard-otp", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerText = "<i class="fa-solid fa-rotate-right"></i> Resend OTP";
+                if (data.success) {
+                    statusElem.style.color = "#16a34a";
+                    statusElem.innerText = data.message + " Enter 6-digit code below.";
+                } else {
+                    statusElem.style.color = "#ef4444";
+                    statusElem.innerText = data.message;
+                }
+            })
+            .catch(error => {
+                btn.disabled = false;
+                btn.innerText = "<i class="fa-solid fa-envelope"></i> Send OTP";
+                statusElem.style.color = "#ef4444";
+                statusElem.innerText = "Server error. Please verify SMTP credentials.";
+            });
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+    <!-- MODAL: EDIT PROFILE & PASSWORD -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3><i class="fa-solid fa-user-pen"></i> Edit Profile & Change Password</h3>
+            <p class="modal-subtext">Update your personal details or securely change your password.</p>
+            
+            <form action="{{ url_for('update_profile') }}" method="POST">
+                <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Basic Details</h4>
+                <label>Full Name <span style="color:red">*</span></label>
+                <input type="text" name="name" class="search-input" value="{{ current_user.name if current_user else name }}" required>
+                
+                <label style="margin-top: 15px; display: block;">Email Address <span style="color:red">*</span></label>
+                <input type="email" name="email" class="search-input" value="{{ current_user.email if current_user else '' }}" required>
+                
+                <label style="margin-top: 15px; display: block;">Contact Number</label>
+                <input type="text" name="phone" class="search-input" value="{{ current_user.phone if current_user and current_user.phone else '' }}" placeholder="Enter 10-digit number">
+                
+                <h4 style="margin-top: 25px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Change Password <small style="font-weight: normal; color: var(--text-secondary);">(Leave blank if not changing)</small></h4>
+                
+                <label>Current Password <span style="color:red">*</span></label>
+                <input type="password" name="old_password" class="search-input" placeholder="Required to save ANY changes" required>
+                
+                <label style="margin-top: 15px; display: block;">New Password</label>
+                <input type="password" name="new_password" class="search-input" placeholder="Enter new password">
+                
+                <label style="margin-top: 15px; display: block;">Confirm New Password</label>
+                <input type="password" name="confirm_new_password" class="search-input" placeholder="Confirm new password">
+                
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                    <button type="button" class="btn-close" onclick="closeModal('editProfileModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #0284c7;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

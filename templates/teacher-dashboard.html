@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Portal - Campus Connect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header class="dashboard-header">
+        <a href="{{ url_for('home') }}" class="logo" style="text-decoration: none;">
+            <span class="logo-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+                    <!-- Connection Lines -->
+                    <path d="M4 16L12 21L20 16" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 21V11" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="4" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="20" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="12" cy="21" r="1.5" fill="#3b82f6"/>
+                    <!-- Graduation Cap -->
+                    <path d="M12 3L2 8.5L12 14L22 8.5L12 3Z" fill="#3b82f6" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M22 8.5V14" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="22" cy="15" r="1.5" fill="#3b82f6"/>
+                </svg>
+            </span>
+            <span class="logo-text">Campus Connect</span>
+            <span class="badge" style="background: #ede9fe; color: #6b21a8; font-size: 13px; margin-left: 8px;">
+                <i class="fa-solid fa-building-columns"></i> {{ college_name }} ({{ college_id }})
+            </span>
+        </a>
+        <div class="teacher-info">
+            <span>{{ name }} ({{ profile.designation if profile and profile.designation else 'Faculty & Staff' }})</span>
+            <button class="theme-toggle-btn" id="themeToggle">
+                <span id="themeIcon"><i class="fa-solid fa-moon"></i></span> <span id="themeText">Dark</span>
+            </button>
+            
+            <button class="btn-submit" style="background: #3b82f6; border-radius: 20px; padding: 6px 15px; font-size: 13px;" onclick="openModal('editProfileModal')">
+                <i class="fa-solid fa-user-pen"></i> Edit Profile
+            </button>
+<a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <h1>{{ college_name }} - Faculty & Operations Portal</h1>
+        <p class="welcome-text">
+            Institutional Operations Console (College ID: <strong>{{ college_id }}</strong>).
+            {% if is_teacher %}
+            Record subject attendance, review student leave requests, and manage notifications.
+            {% elif is_warden %}
+            Hostel administration portal: Review and approve student gate passes, allocate hostel rooms to new students, and manage hostel issues.
+            {% elif is_electrician %}
+            <i class="fa-solid fa-bolt"></i> Electrician Maintenance Console: View assigned electrical complaints, update repair statuses, reply to students/admin, and message faculty.
+            {% elif is_exam_cell %}
+            Examination Cell portal: Enter Year-Wise All Subjects Internal / Semester marks, manage routine schedules and exam notices.
+            {% else %}
+            Campus staff portal: View assigned duties, memos and direct communications.
+            {% endif %}
+        </p>
+
+        <!-- DISMISSIBLE ALERT NOTIFICATIONS -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert-msg {{ category }}">
+                        <span>{{ message }}</span>
+                        <button type="button" class="alert-close-btn" onclick="dismissAlert(this)" title="Dismiss message"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- OFFICIAL STAFF PROFILE CARD -->
+        {% if profile %}
+        <div class="staff-profile-card">
+            <div class="staff-profile-flex">
+                <div>
+                    {% if profile.photo_url %}
+                    <img src="{{ profile.photo_url }}" alt="Profile Photo" class="staff-avatar-img">
+                    {% else %}
+                    <div class="staff-avatar-placeholder">
+                        {{ profile.name[0] }}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="staff-profile-info">
+                    <h2>{{ profile.name }}</h2>
+                    <span class="badge badge-designation">{{ profile.designation if profile.designation else 'Staff' }}</span>
+                    
+                    <div class="staff-details-grid">
+                        <div class="staff-detail-item"><strong>Staff ID:</strong> <span>{{ profile.user_id }}</span></div>
+                        <div class="staff-detail-item"><strong>Official Email:</strong> <span>{{ profile.email }}</span></div>
+                        <div class="staff-detail-item"><strong>Contact Phone:</strong> <span>{{ profile.phone if profile.phone else 'Not Updated' }}</span></div>
+                        <div class="staff-detail-item"><strong>Identity Status:</strong> <span>Verified</span></div>
+                        <div class="staff-detail-item"><strong>Bank Account:</strong> <span>{{ profile.bank_account if profile.bank_account else 'Linked' }}</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- <i class="fa-solid fa-bolt"></i> ELECTRICIAN MAINTENANCE CONSOLE (VISIBLE ONLY TO ELECTRICIAN) -->
+        {% if is_electrician %}
+        <div style="background: #fefce8; border: 1.5px solid #fde047; border-radius: 12px; padding: 22px; margin: 30px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <h2 style="margin: 0; color: #854d0e; font-size: 20px;"><i class="fa-solid fa-bolt"></i> Electrician Repair & Maintenance Console</h2>
+                    <p style="margin: 4px 0 0; color: #a16207; font-size: 13px;">View student repair complaints forwarded by admin, update resolution status, and send replies.</p>
+                </div>
+                <button class="btn-submit" style="background: #7c3aed; padding: 9px 18px; font-size: 13.5px;" onclick="openModal('teacherMsgModal')">
+                    <i class="fa-solid fa-envelope"></i> Message Faculty / Admin
+                </button>
+            </div>
+
+            <h3 style="color: #854d0e; margin: 15px 0 10px; font-size: 16px;">Assigned Repair & Electrical Work Orders:</h3>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Roll / ID</th>
+                            <th>Issue Title & Details</th>
+                            <th>Date</th>
+                            <th>Current Status</th>
+                            <th>Action / Reply</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for comp in all_complaints %}
+                        {% if comp.status in ['forwarded_to_electrician', 'in_progress', 'resolved'] %}
+                        <tr>
+                            <td><strong>{{ comp.student_name }}</strong></td>
+                            <td>{{ comp.student_id }}</td>
+                            <td><strong>{{ comp.title }}</strong><br><small>{{ comp.description }}</small></td>
+                            <td>{{ comp.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if comp.status == 'resolved' %}
+                                <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: bold;"><i class="fa-solid fa-circle-check"></i> Resolved</span>
+                                {% elif comp.status == 'forwarded_to_electrician' or comp.status == 'in_progress' %}
+                                <span class="badge" style="background: #e0f2fe; color: #0284c7; font-weight: bold;"><i class="fa-solid fa-bolt"></i> Active Task</span>
+                                {% else %}
+                                <span class="badge pending"><i class="fa-solid fa-hourglass-half"></i> Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form action="{{ url_for('electrician_update_repair', comp_id=comp.id) }}" method="POST" style="display: flex; gap: 6px; flex-direction: column;">
+                                    <select name="status" required style="padding: 4px 8px; font-size: 12px; border-radius: 4px;">
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="resolved">Resolved</option>
+                                    </select>
+                                    <input type="text" name="reply_remarks" placeholder="Add reply remarks..." required style="padding: 4px 8px; font-size: 12px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                                    <button type="submit" class="btn-submit" style="padding: 5px 10px; font-size: 12px; background: #16a34a;">Send Reply & Update</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% else %}
+                        <tr><td colspan="6" style="text-align: center; color: #888;">No repair orders assigned yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- <i class="fa-solid fa-building"></i> HOSTEL WARDEN ROOM ALLOCATION CONSOLE -->
+        {% if is_warden %}
+        <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 22px; margin: 30px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <h2 style="margin: 0; color: #166534; font-size: 20px;"><i class="fa-solid fa-building"></i> Hostel Warden: Room & Accommodation Allocator</h2>
+                    <p style="margin: 4px 0 0; color: #15803d; font-size: 13px;">Assign hostel block, floor, and room number to newly admitted students.</p>
+                </div>
+                <button class="btn-submit" style="background: #16a34a; padding: 9px 18px; font-size: 13.5px;" onclick="openModal('wardenRoomModal')">
+                    <i class="fa-solid fa-door-open"></i> Allocate Hostel Room to Student
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- <i class="fa-solid fa-calendar-days"></i> SPECIAL EXAMINATION CELL CONSOLE -->
+        {% if is_exam_cell %}
+        <div style="background: #faf5ff; border: 1.5px solid #d8b4fe; border-radius: 12px; padding: 22px; margin: 30px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <h2 style="margin: 0; color: #6b21a8; font-size: 20px;"><i class="fa-solid fa-pen-to-square"></i> Examination Cell: Student Marks & Academic Console</h2>
+                    <p style="margin: 4px 0 0; color: #7e22ce; font-size: 13px;">Publish subject-wise marks across all academic years or update routine timetable.</p>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-submit" style="background: #7c3aed; padding: 9px 18px; font-size: 13.5px;" onclick="openModal('examMarksModal')">
+                        <i class="fa-solid fa-chart-column"></i> Post All Subjects Marks (Batch Entry)
+                    </button>
+                    {% if recent_marks %}
+                    <button type="button" class="btn-submit" style="background: #ef4444; padding: 9px 16px; font-size: 13px;"
+                            onclick="confirmCustomDelete('{{ url_for('delete_all_exam_marks') }}', 'WARNING: Are you sure you want to completely clear ALL examination marks from database?');">
+                        <i class="fa-solid fa-eraser"></i> Clear All Marks
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Published Marks Table -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0 10px 0; flex-wrap: wrap; gap: 10px;">
+                <h3 style="color: #6b21a8; margin: 0; font-size: 16px;">Recent Published Examination Results (Total: {{ recent_marks|length }}):</h3>
+                <input type="text" id="marksTableSearchInput" onkeyup="filterExamMarksTable()" placeholder="Quick filter student / subject..." style="padding: 6px 12px; border: 1px solid #d8b4fe; border-radius: 20px; font-size: 12.5px; background: var(--bg-card); color: var(--text-primary); outline: none;">
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table" id="examRecentMarksTable">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Student Name</th>
+                            <th>Exam Type</th>
+                            <th>Subject</th>
+                            <th>Full Marks</th>
+                            <th>Secured Marks</th>
+                            <th>Percentage</th>
+                            <th>Awarded Grade</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rm in recent_marks %}
+                        <tr class="exam-mark-row" {% if loop.index > 3 %}style="display: none;"{% endif %}>
+                            <td><strong>{{ rm.student_id }}</strong></td>
+                            <td class="exam-student-name">{{ rm.student_name }}</td>
+                            <td><span class="badge" style="background: #ede9fe; color: #6b21a8;">{{ rm.exam_type }}</span></td>
+                            <td class="exam-subject-name"><strong>{{ rm.subject }}</strong></td>
+                            <td>{{ rm.full_marks }}</td>
+                            <td><strong style="color: #16a34a;">{{ rm.secured_marks }}</strong></td>
+                            <td>{{ rm.percentage }}%</td>
+                            <td><span class="badge" style="background: #dcfce7; color: #15803d; font-weight: bold;">{{ rm.grade }}</span></td>
+                            <td>{{ rm.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <button class="btn-action btn-delete" type="button"
+                                        onclick="confirmCustomDelete('{{ url_for('delete_exam_mark', mark_id=rm.id) }}', 'Delete this specific exam mark entry?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="10" style="text-align: center; color: var(--text-secondary);">No marks published yet. Click "Post All Subjects Marks" to enter marksheet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if recent_marks|length > 3 %}
+            <div style="text-align: center; margin-top: 10px; margin-bottom: 25px;">
+                <button type="button" id="btnToggleExamMarks" class="btn-submit" style="background: #6b21a8; font-size: 13px; padding: 8px 22px; border-radius: 20px;" onclick="toggleTableRows('exam-mark-row', 'btnToggleExamMarks', 3)">
+                    <i class="fa-solid fa-eye"></i> View More (Show All {{ recent_marks|length }} Results)
+                </button>
+            </div>
+            {% endif %}
+
+            <!-- Routine Section -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-top: 30px; margin-bottom: 12px;">
+                <h3 style="margin: 0; color: #6b21a8; font-size: 16px;">Academic Routine Schedule Editor:</h3>
+                <form method="GET" action="{{ url_for('teacher_dashboard') }}" style="display: flex; gap: 10px; align-items: center;">
+                    <select name="branch" onchange="this.form.submit()" style="padding: 6px 10px; border-radius: 6px; font-weight: bold;">
+                        {% for b in branches %}
+                        <option value="{{ b }}" {% if b == selected_branch %}selected{% endif %}>{{ b }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="year" onchange="this.form.submit()" style="padding: 6px 10px; border-radius: 6px; font-weight: bold;">
+                        {% for y in years %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>09:00 - 10:00</th>
+                            <th>10:00 - 11:00</th>
+                            <th>11:00 - 12:00</th>
+                            <th style="background: #ede9fe; color: #581c87; text-align: center;">Lunch Break</th>
+                            <th>01:00 - 02:00</th>
+                            <th>02:00 - 03:00</th>
+                            <th>03:00 - 04:00</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in routine %}
+                        <tr>
+                            <td><strong>{{ r.day_name }}</strong></td>
+                            <td>{{ r.period1 }}</td>
+                            <td>{{ r.period2 }}</td>
+                            <td>{{ r.period3 }}</td>
+                            <td style="text-align: center; color: #7c3aed; font-weight: bold; font-size: 12px;"><i class="fa-solid fa-box-open"></i> Recess</td>
+                            <td>{{ r.period4 }}</td>
+                            <td>{{ r.period5 }}</td>
+                            <td>{{ r.period6 }}</td>
+                            <td>
+                                <button class="btn-action btn-edit" type="button"
+                                        onclick="openEditRoutineModal('{{ selected_branch }}', '{{ selected_year }}', '{{ r.day_name }}', '{{ r.period1 }}', '{{ r.period2 }}', '{{ r.period3 }}', '{{ r.period4 }}', '{{ r.period5 }}', '{{ r.period6 }}')"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- PLACEMENTS & INTERNSHIPS CONSOLE -->
+        <h2 style="margin-top: 30px;"><i class="fa-solid fa-briefcase"></i> Student Placements & Internships (Verification)</h2>
+        <div class="table-responsive" style="margin-bottom: 25px;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Branch & Year</th>
+                        <th>Company</th>
+                        <th>Role</th>
+                        <th>Type</th>
+                        <th>Package (LPA)</th>
+                        <th>Status</th>
+                        {% if is_principal %}
+                        <th>Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in student_placements %}
+                    <tr>
+                        <td><strong>{{ p.student_name }}</strong></td>
+                        <td><span class="badge" style="background: #e0f2fe; color: #0284c7;">{{ p.branch }} • {{ p.year }}</span></td>
+                        <td>{{ p.company_name }}</td>
+                        <td>{{ p.role }}</td>
+                        <td><span class="badge" style="background: {% if p.type == 'Placement' %}#dcfce7; color: #15803d;{% else %}#fef3c7; color: #b45309;{% endif %}">{{ p.type }}</span></td>
+                        <td>{{ p.package_lpa }}</td>
+                        <td>
+                            {% if p.status == 'Verified' %}
+                            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: bold;"><i class="fa-solid fa-check-circle"></i> Verified</span>
+                            {% else %}
+                            <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: bold;"><i class="fa-solid fa-clock"></i> Pending</span>
+                            {% endif %}
+                        </td>
+                        {% if is_principal %}
+                        <td>
+                            {% if p.status == 'Pending' %}
+                            <button class="btn-action btn-edit" type="button" style="background: #dcfce7; color: #15803d;"
+                                    onclick="window.location.href='{{ url_for('verify_placement', placement_id=p.id, status='Verified') }}'"><i class="fa-solid fa-check"></i> Verify</button>
+                            {% else %}
+                            <button class="btn-action btn-edit" type="button" style="background:#fef3c7; color:#b45309;"
+                                    onclick="window.location.href='{{ url_for('verify_placement', placement_id=p.id, status='Pending') }}'"><i class="fa-solid fa-undo"></i> Undo</button>
+                            {% endif %}
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('verify_placement', placement_id=p.id, status='Delete') }}', 'Delete this record permanently?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" style="text-align: center; color: var(--text-secondary);">No placement records submitted yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ATTENDANCE CONSOLE -->
+        {% if is_teacher %}
+        <h2><i class="fa-solid fa-pen-to-square"></i> Mark Subject Attendance (Teachers & Professors Only)</h2>
+        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 22px; margin-bottom: 20px;" class="staff-notice-card">
+            <form method="GET" action="{{ url_for('teacher_dashboard') }}" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                <div>
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">1. Select Branch:</label>
+                    <select name="branch" onchange="this.form.submit()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: bold;">
+                        {% for b in branches %}
+                        <option value="{{ b }}" {% if b == selected_branch %}selected{% endif %}>{{ b }} Engineering</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">2. Select Academic Year:</label>
+                    <select name="year" onchange="this.form.submit()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: bold;">
+                        {% for y in years %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" class="btn-submit" style="padding: 9px 16px;"><i class="fa-solid fa-filter"></i> Filter Students</button>
+                </div>
+            </form>
+        </div>
+
+        <form action="{{ url_for('mark_attendance') }}" method="POST" class="attendance-card-form">
+            <input type="hidden" name="branch" value="{{ selected_branch }}">
+            <input type="hidden" name="year" value="{{ selected_year }}">
+
+            <div class="att-form-row">
+                <div>
+                    <label>Select Curriculum Subject ({{ selected_branch }} - {{ selected_year }}):</label>
+                    <select name="subject" required>
+                        {% for sub in subjects %}
+                        <option value="{{ sub }}">{{ sub }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label>Date:</label>
+                    <input type="date" name="date" value="{{ today_date }}" required>
+                </div>
+                <div class="att-save-wrapper">
+                    <button type="submit" class="btn-submit" style="width: 100%; background: #16a34a; padding: 10px;"><i class="fa-solid fa-floppy-disk"></i> Save Attendance</button>
+                </div>
+            </div>
+
+            <p style="color: #64748b; font-size: 13.5px; margin-bottom: 10px;">
+                Showing <strong>{{ students|length }}</strong> student(s) currently enrolled in <strong>{{ selected_branch }} ({{ selected_year }})</strong>:
+            </p>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Roll No / User ID</th>
+                            <th>Student Name</th>
+                            <th>Branch & Year</th>
+                            <th>Attendance Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in students %}
+                        <tr>
+                            <td><strong>{{ s.user_id }}</strong></td>
+                            <td>{{ s.name }}</td>
+                            <td><span class="badge" style="background: #e0f2fe; color: #0284c7;">{{ s.branch }} • {{ s.year }}</span></td>
+                            <td>
+                                <label style="margin-right: 20px; cursor: pointer; color: #16a34a; font-weight: bold;">
+                                    <input type="radio" name="status_{{ s.user_id }}" value="Present" checked> Present
+                                </label>
+                                <label style="cursor: pointer; color: #dc2626; font-weight: bold;">
+                                    <input type="radio" name="status_{{ s.user_id }}" value="Absent"> Absent
+                                </label>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #888; padding: 20px;">
+                                No students registered under <strong>{{ selected_branch }} Engineering ({{ selected_year }})</strong> yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+        {% endif %}
+
+        <!-- STUDENT REQUESTS (HIDDEN FOR ELECTRICIAN) -->
+        {% if not is_electrician %}
+        <h2>
+            {% if is_warden %}
+            <i class="fa-solid fa-building"></i> Hostel Gate Pass Requests Assigned to You ({{ requests|length }})
+            {% else %}
+            <i class="fa-solid fa-inbox"></i> Student Leave Requests Assigned to You ({{ requests|length }})
+            {% endif %}
+        </h2>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Type</th>
+                        <th>Reason / Details</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in requests %}
+                    <tr>
+                        <td><strong>{{ r.student_name }}</strong> ({{ r.student_id }})</td>
+                        <td style="text-transform: capitalize;">
+                            {% if r.type == 'gate_pass' %}
+                            <span class="badge" style="background: #fef08a; color: #854d0e;"><i class="fa-solid fa-building"></i> Gate Pass</span>
+                            {% else %}
+                            <span class="badge" style="background: #e0f2fe; color: #0284c7;"><i class="fa-solid fa-pen-to-square"></i> Leave</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ r.reason }}</td>
+                        <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td><span class="badge {{ r.status }}">{{ r.status }}</span></td>
+                        <td>
+                            {% if r.status == 'pending' %}
+                            <a href="{{ url_for('update_request', req_id=r.id, status='approved') }}" class="btn-submit" style="padding: 4px 8px; font-size: 12px; background: #16a34a; text-decoration: none; margin-right: 6px;">Approve</a>
+                            <a href="{{ url_for('update_request', req_id=r.id, status='rejected') }}" style="color: #dc2626; font-weight: bold; text-decoration: none; font-size: 12px; margin-right: 6px;">Reject</a>
+                            {% endif %}
+                            <button class="btn-action btn-delete" type="button"
+                                    onclick="confirmCustomDelete('{{ url_for('delete_request', req_id=r.id) }}', 'Delete this student request record?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" style="text-align: center; color: #888;">No student requests assigned to you right now.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if doc_requests and doc_requests|length > 0 %}
+        <h2><i class="fa-solid fa-file-contract"></i> Student Certificate & Document Requests ({{ doc_requests|length }})</h2>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Document</th>
+                        <th>Purpose</th>
+                        <th>Date</th>
+                        <th>Approval Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in doc_requests %}
+                    <tr>
+                        <td><strong>{{ d.student_name }}</strong> ({{ d.student_id }})</td>
+                        <td style="text-transform: capitalize;"><strong>{{ d.doc_type.replace('_', ' ') }}</strong></td>
+                        <td>{{ d.purpose }}</td>
+                        <td>{{ d.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td><span class="badge pending"><i class="fa-solid fa-hourglass-half"></i> {{ d.status }}</span></td>
+                        <td>
+                            {% if profile.designation == 'Head of Department (HOD)' %}
+                            <a href="{{ url_for('update_doc_request', doc_id=d.id, status='Pending Principal') }}" class="btn-submit" style="padding: 4px 8px; font-size: 12px; background: #16a34a; text-decoration: none; margin-right: 6px;">Approve to Principal</a>
+                            <a href="{{ url_for('update_doc_request', doc_id=d.id, status='rejected') }}" style="color: #dc2626; font-weight: bold; text-decoration: none; font-size: 12px; margin-right: 6px;">Reject</a>
+                            {% elif profile.designation == 'Principal' %}
+                            <a href="{{ url_for('update_doc_request', doc_id=d.id, status='Pending Admin') }}" class="btn-submit" style="padding: 4px 8px; font-size: 12px; background: #16a34a; text-decoration: none; margin-right: 6px;">Approve to Admin</a>
+                            <a href="{{ url_for('update_doc_request', doc_id=d.id, status='rejected') }}" style="color: #dc2626; font-weight: bold; text-decoration: none; font-size: 12px; margin-right: 6px;">Reject</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- COMMUNICATIONS & DIRECT MESSAGES -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 40px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+            <h2 style="margin: 0;">Direct Communications & Campus Notices ({{ notices|length }})</h2>
+            <button class="btn-submit" onclick="openModal('teacherMsgModal')"><i class="fa-solid fa-paper-plane"></i> Send Message to Student / Faculty / Admin</button>
+        </div>
+
+        <div class="notices-grid">
+            {% for n in notices %}
+            <div class="staff-notice-card">
+                {% if n.recipient_id == user_id %}
+                <span class="badge private-memo-badge"><i class="fa-solid fa-lock"></i> Direct Message to You</span>
+                {% elif n.recipient_id %}
+                <span class="badge" style="background: #e0f2fe; color: #0284c7;">Direct to {{ n.recipient_id }}</span>
+                {% else %}
+                <span class="badge notice-badge">{{ n.category if n.category else 'Campus Notice' }}</span>
+                {% endif %}
+                <h4>{{ n.title }}</h4>
+                <p>{{ n.description }}</p>
+                <small>From: {{ n.posted_by }} | {{ n.created_at.strftime('%Y-%m-%d') }}</small>
+                <div style="text-align: right; margin-top: 8px;">
+                    <button class="btn-action btn-delete" type="button"
+                            onclick="confirmCustomDelete('{{ url_for('delete_notice', notice_id=n.id) }}', 'Delete this notice/message?');"><i class="fa-solid fa-trash"></i> Delete</button>
+                </div>
+            </div>
+            {% else %}
+            <p style="color: #888;">No notices or messages found.</p>
+            {% endfor %}
+        </div>
+    </main>
+
+    <!-- CUSTOM THEMED CONFIRM DELETE MODAL -->
+    <div id="customDeleteModal" class="modal">
+        <div class="modal-content custom-confirm-card">
+            <div class="confirm-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <h3>Confirm Delete Action</h3>
+            <p id="customDeleteMessage">Are you sure you want to permanently delete this item? This action cannot be undone.</p>
+            <div style="display: flex; justify-content: center; gap: 12px;">
+                <button type="button" class="btn-close" onclick="closeCustomDeleteModal()">Cancel</button>
+                <button class="btn-action btn-delete" type="button" id="customDeleteConfirmBtn"><i class="fa-solid fa-trash"></i> Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: WARDEN ROOM ALLOCATION -->
+    <div id="wardenRoomModal" class="modal">
+        <div class="modal-content" style="max-width: 520px;">
+            <h3><i class="fa-solid fa-building-user"></i> Allocate Hostel Room & Accommodation</h3>
+            <p class="modal-subtext">Assign room details to a newly admitted student:</p>
+            <form action="{{ url_for('warden_allocate_room') }}" method="POST">
+                <label>Select Student:</label>
+                <select name="student_id" required>
+                    <option value="">-- Choose Student --</option>
+                    {% for s in all_students %}
+                    <option value="{{ s.user_id }}">{{ s.name }} ({{ s.branch }} - {{ s.year }}) - Roll: {{ s.user_id }}</option>
+                    {% endfor %}
+                </select>
+
+                <label>Hostel Block Name:</label>
+                <input type="text" name="hostel_name" required placeholder="e.g. Aryabhatta Boys Hostel / Block A">
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Floor Number:</label>
+                        <select name="floor_no" required>
+                            <option value="Ground Floor">Ground Floor</option>
+                            <option value="1st Floor">1st Floor</option>
+                            <option value="2nd Floor">2nd Floor</option>
+                            <option value="3rd Floor">3rd Floor</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Room Number:</label>
+                        <input type="text" name="room_no" required placeholder="e.g. Room 204">
+                    </div>
+                </div>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('wardenRoomModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #16a34a;">Save & Notify Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: POST ALL SUBJECTS MARKS -->
+    <div id="examMarksModal" class="modal">
+        <div class="modal-content" style="max-width: 680px;">
+            <h3><i class="fa-solid fa-chart-column"></i> Post All Subjects Examination Marks</h3>
+            <p class="modal-subtext">Quickly search student or choose from list to auto-load curriculum subjects:</p>
+            
+            <form action="{{ url_for('submit_exam_marks_batch') }}" method="POST">
+                <input type="hidden" id="batch_subject_count" name="subject_count" value="6">
+
+                <div style="margin-bottom: 12px;">
+                    <label style="color: #7c3aed; font-weight: bold;"><i class="fa-solid fa-magnifying-glass"></i> Quick Search Student Name or Roll Number:</label>
+                    <input type="text" id="modalStudentSearchFilter" onkeyup="filterModalStudentList()" placeholder="Type roll no or student name..." style="border: 1.5px solid #7c3aed; background: var(--bg-card); font-weight: bold;">
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>1. Select Enrolled Student:</label>
+                        <select id="exam_student_select" name="student_id" onchange="autoSelectStudentBranchYear()" required>
+                            <option value="">-- Choose Student --</option>
+                            {% for s in all_students %}
+                            <option value="{{ s.user_id }}" data-branch="{{ s.branch if s.branch else 'CSE' }}" data-year="{{ s.year if s.year else '1st Year' }}" class="student-select-opt">
+                                {{ s.name }} ({{ s.branch }} - {{ s.year }}) - Roll: {{ s.user_id }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label>2. Examination Assessment Type:</label>
+                        <select name="exam_type" required>
+                            <option value="Internal Assessment (Mid-Sem)">Internal Assessment (Mid-Sem)</option>
+                            <option value="Semester Examination (End-Sem)">Semester Examination (End-Sem)</option>
+                            <option value="Practical / Lab Assessment">Practical / Lab Assessment</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>3. Filter Branch:</label>
+                        <select id="exam_branch_select" onchange="renderAllSubjectsBatchInputs()" required>
+                            {% for b in branches %}
+                            <option value="{{ b }}">{{ b }} Engineering</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label>4. Academic Year:</label>
+                        <select id="exam_year_select" onchange="renderAllSubjectsBatchInputs()" required>
+                            {% for y in years %}
+                            <option value="{{ y }}">{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <h4 style="margin: 16px 0 8px 0; color: #7c3aed; font-size: 14.5px;">
+                    <i class="fa-solid fa-book"></i> Enter Marks for All Enrolled Subjects:
+                </h4>
+
+                <div class="table-responsive" style="max-height: 290px; overflow-y: auto; margin-bottom: 15px;">
+                    <table class="data-table" style="min-width: 100%; margin-top: 0; margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th style="width: 45%;">Curriculum Subject</th>
+                                <th style="width: 25%;">Full Marks</th>
+                                <th style="width: 30%;">Secured Marks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batch_subjects_table_body">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('examMarksModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #7c3aed; padding: 10px 18px;">
+                        <i class="fa-solid fa-paper-plane"></i> Publish All Subjects Marksheet & Notify Student
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: EDIT ROUTINE -->
+    <div id="editRoutineModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fa-solid fa-calendar-days"></i> Edit Class Timetable Routine (9 AM - 4 PM)</h3>
+            <p class="modal-subtext">Update period allocations for the selected day:</p>
+            <form action="{{ url_for('update_timetable_entry') }}" method="POST">
+                <input type="hidden" id="routine_branch" name="branch">
+                <input type="hidden" id="routine_year" name="year">
+
+                <label>Day of Week:</label>
+                <input type="text" id="routine_day" name="day_name" readonly style="background: #f1f5f9; font-weight: bold;">
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Period 1 (09:00 - 10:00 AM):</label>
+                        <input type="text" id="routine_p1" name="period1" required>
+                    </div>
+                    <div>
+                        <label>Period 2 (10:00 - 11:00 AM):</label>
+                        <input type="text" id="routine_p2" name="period2" required>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Period 3 (11:00 - 12:00 PM):</label>
+                        <input type="text" id="routine_p3" name="period3" required>
+                    </div>
+                    <div>
+                        <label>Period 4 (01:00 - 02:00 PM):</label>
+                        <input type="text" id="routine_p4" name="period4" required>
+                    </div>
+                </div>
+
+                <div class="modal-grid-2">
+                    <div>
+                        <label>Period 5 (02:00 - 03:00 PM):</label>
+                        <input type="text" id="routine_p5" name="period5" required>
+                    </div>
+                    <div>
+                        <label>Period 6 (03:00 - 04:00 PM):</label>
+                        <input type="text" id="routine_p6" name="period6" required>
+                    </div>
+                </div>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('editRoutineModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #7c3aed;"><i class="fa-solid fa-floppy-disk"></i> Update Routine</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: SEND PRIVATE MESSAGE (WITH LIVE SEARCH BAR & ALL RECIPIENTS) -->
+    <div id="teacherMsgModal" class="modal">
+        <div class="modal-content" style="max-width: 520px;">
+            <h3><i class="fa-solid fa-paper-plane"></i> Dispatch Message to Student, Faculty or Admin</h3>
+            <form action="{{ url_for('send_message') }}" method="POST">
+                
+                <!-- LIVE SEARCH FILTER INPUT FOR RECIPIENT DROPDOWN -->
+                <div style="margin-bottom: 10px;">
+                    <label style="color: #7c3aed; font-weight: bold; font-size: 13px;"><i class="fa-solid fa-magnifying-glass"></i> Search Student or Staff Name / Roll No:</label>
+                    <input type="text" id="recipientSearchInput" onkeyup="filterRecipientDropdown()" placeholder="Type name or roll number to filter..." style="width: 100%; padding: 7px 12px; border: 1.5px solid #7c3aed; border-radius: 6px; font-weight: bold; background: var(--input-bg); color: var(--input-text);">
+                </div>
+
+                <label>Select Recipient:</label>
+                <select id="recipientSelectDropdown" name="recipient_id" required style="max-height: 200px;">
+                    <option value="">-- Choose Recipient --</option>
+                    <option value="all">All Campus (Public Notice)</option>
+                    <optgroup label="Faculty, Staff, Principal & Admin Authorities">
+                        {% for auth in authorities %}
+                        <option value="{{ auth.user_id }}" class="recipient-option" data-search="{{ auth.name|lower }} {{ auth.user_id|lower }} {{ auth.designation|lower }}">
+                            {{ auth.name }} ({{ auth.designation if auth.designation else auth.role.capitalize() }}) - ID: {{ auth.user_id }}
+                        </option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="Enrolled Students">
+                        {% for s in all_students %}
+                        <option value="{{ s.user_id }}" class="recipient-option" data-search="{{ s.name|lower }} {{ s.user_id|lower }} {{ s.branch|lower }}">
+                            {{ s.name }} (Roll: {{ s.user_id }} - {{ s.branch }} • {{ s.year }})
+                        </option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+
+                <input type="hidden" name="category" value="Direct Message">
+
+                <label>Heading / Subject:</label>
+                <input type="text" name="title" required placeholder="Subject heading...">
+
+                <label>Message Details:</label>
+                <textarea name="description" rows="3" required placeholder="Type message in detail..."></textarea>
+
+                <div class="modal-actions-footer">
+                    <button type="button" class="btn-close" onclick="closeModal('teacherMsgModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #7c3aed;">Dispatch Message</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    
+
+    <footer>
+        <p>© 2026 {{ college_name }} | Powered by Campus Connect</p>
+    </footer>
+
+    <!-- INTERACTION & SCRIPTS -->
+    <script>
+        const syllabusData = {{ syllabus_dict|tojson }};
+
+        // Live Search Filter for Recipient Dropdown in Message Modal
+        function filterRecipientDropdown() {
+            const filter = document.getElementById('recipientSearchInput').value.toLowerCase().trim();
+            const select = document.getElementById('recipientSelectDropdown');
+            const options = select.getElementsByClassName('recipient-option');
+
+            for (let i = 0; i < options.length; i++) {
+                const searchData = options[i].getAttribute('data-search') || '';
+                const textContent = options[i].textContent.toLowerCase();
+                
+                if (searchData.indexOf(filter) > -1 || textContent.indexOf(filter) > -1 || filter === "") {
+                    options[i].style.display = "";
+                } else {
+                    options[i].style.display = "none";
+                }
+            }
+        }
+
+        function filterModalStudentList() {
+            const filter = document.getElementById('modalStudentSearchFilter').value.toLowerCase().trim();
+            const select = document.getElementById('exam_student_select');
+            const options = select.getElementsByClassName('student-select-opt');
+            let firstMatch = null;
+
+            for (let i = 0; i < options.length; i++) {
+                const text = options[i].textContent || options[i].innerText;
+                if (text.toLowerCase().indexOf(filter) > -1) {
+                    options[i].style.display = "";
+                    if (!firstMatch && filter !== "") firstMatch = options[i];
+                } else {
+                    options[i].style.display = "none";
+                }
+            }
+
+            if (firstMatch) {
+                select.value = firstMatch.value;
+                autoSelectStudentBranchYear();
+            }
+        }
+
+        function filterExamMarksTable() {
+            const filter = document.getElementById('marksTableSearchInput').value.toLowerCase().trim();
+            const rows = document.getElementsByClassName('exam-mark-row');
+
+            for (let i = 0; i < rows.length; i++) {
+                const sName = rows[i].querySelector('.exam-student-name')?.textContent || '';
+                const subName = rows[i].querySelector('.exam-subject-name')?.textContent || '';
+                const idText = rows[i].cells[0]?.textContent || '';
+                const combined = sName + " " + subName + " " + idText;
+
+                if (combined.toLowerCase().indexOf(filter) > -1) {
+                    rows[i].style.display = "";
+                } else {
+                    rows[i].style.display = "none";
+                }
+            }
+        }
+
+        function renderAllSubjectsBatchInputs() {
+            const branch = document.getElementById('exam_branch_select').value;
+            const year = document.getElementById('exam_year_select').value;
+            const tbody = document.getElementById('batch_subjects_table_body');
+            const countInput = document.getElementById('batch_subject_count');
+
+            tbody.innerHTML = '';
+
+            let subs = [];
+            if (syllabusData[branch] && syllabusData[branch][year]) {
+                subs = syllabusData[branch][year];
+            }
+
+            countInput.value = subs.length;
+
+            subs.forEach(function(sub, index) {
+                const rowNum = index + 1;
+                const tr = document.createElement('tr');
+
+                tr.innerHTML = `
+                    <td>
+                        <input type="hidden" name="subject_name_${rowNum}" value="${sub}">
+                        <strong>${sub}</strong>
+                    </td>
+                    <td>
+                        <input type="number" name="full_marks_${rowNum}" value="100" min="10" max="200" required 
+                               style="width: 100%; padding: 6px; border-radius: 4px; border: 1.5px solid var(--input-border); background: var(--input-bg); color: var(--input-text);">
+                    </td>
+                    <td>
+                        <input type="number" name="secured_marks_${rowNum}" placeholder="e.g. 75" min="0" max="200" required
+                               style="width: 100%; padding: 6px; border-radius: 4px; border: 1.5px solid #7c3aed; background: var(--input-bg); color: var(--input-text); font-weight: bold;">
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function autoSelectStudentBranchYear() {
+            const studentSelect = document.getElementById('exam_student_select');
+            const selectedOption = studentSelect.options[studentSelect.selectedIndex];
+            const branch = selectedOption?.getAttribute('data-branch');
+            const year = selectedOption?.getAttribute('data-year');
+
+            if (branch) {
+                document.getElementById('exam_branch_select').value = branch;
+            }
+            if (year) {
+                document.getElementById('exam_year_select').value = year;
+            }
+
+            renderAllSubjectsBatchInputs();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            renderAllSubjectsBatchInputs();
+        });
+
+        function openEditRoutineModal(branch, year, day, p1, p2, p3, p4, p5, p6) {
+            document.getElementById('routine_branch').value = branch;
+            document.getElementById('routine_year').value = year;
+            document.getElementById('routine_day').value = day;
+            document.getElementById('routine_p1').value = p1;
+            document.getElementById('routine_p2').value = p2;
+            document.getElementById('routine_p3').value = p3;
+            document.getElementById('routine_p4').value = p4;
+            document.getElementById('routine_p5').value = p5;
+            document.getElementById('routine_p6').value = p6;
+            openModal('editRoutineModal');
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+    <!-- MODAL: EDIT PROFILE & PASSWORD -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3><i class="fa-solid fa-user-pen"></i> Edit Profile & Change Password</h3>
+            <p class="modal-subtext">Update your personal details or securely change your password.</p>
+            
+            <form action="{{ url_for('update_profile') }}" method="POST">
+                <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Basic Details</h4>
+                <label>Full Name <span style="color:red">*</span></label>
+                <input type="text" name="name" class="search-input" value="{{ current_user.name if current_user else name }}" required>
+                
+                <label style="margin-top: 15px; display: block;">Email Address <span style="color:red">*</span></label>
+                <input type="email" name="email" class="search-input" value="{{ current_user.email if current_user else '' }}" required>
+                
+                <label style="margin-top: 15px; display: block;">Contact Number</label>
+                <input type="text" name="phone" class="search-input" value="{{ current_user.phone if current_user and current_user.phone else '' }}" placeholder="Enter 10-digit number">
+                
+                <h4 style="margin-top: 25px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Change Password <small style="font-weight: normal; color: var(--text-secondary);">(Leave blank if not changing)</small></h4>
+                
+                <label>Current Password <span style="color:red">*</span></label>
+                <input type="password" name="old_password" class="search-input" placeholder="Required to save ANY changes" required>
+                
+                <label style="margin-top: 15px; display: block;">New Password</label>
+                <input type="password" name="new_password" class="search-input" placeholder="Enter new password">
+                
+                <label style="margin-top: 15px; display: block;">Confirm New Password</label>
+                <input type="password" name="confirm_new_password" class="search-input" placeholder="Confirm new password">
+                
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                    <button type="button" class="btn-close" onclick="closeModal('editProfileModal')">Cancel</button>
+                    <button type="submit" class="btn-submit" style="background: #0284c7;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

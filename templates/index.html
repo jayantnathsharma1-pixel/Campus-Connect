@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Connect - One Campus Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <a href="{{ url_for('home') }}" class="logo" style="text-decoration: none;">
+            <span class="logo-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+                    <!-- Connection Lines -->
+                    <path d="M4 16L12 21L20 16" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 21V11" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="4" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="20" cy="16" r="1.5" fill="#3b82f6"/>
+                    <circle cx="12" cy="21" r="1.5" fill="#3b82f6"/>
+                    <!-- Graduation Cap -->
+                    <path d="M12 3L2 8.5L12 14L22 8.5L12 3Z" fill="#3b82f6" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M22 8.5V14" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="22" cy="15" r="1.5" fill="#3b82f6"/>
+                </svg>
+            </span>
+            <span class="logo-text">Campus Connect</span>
+        </a>
+
+        <nav>
+            <a href="#home">Home</a>
+            <a href="#features">Features</a>
+            <a href="#about">About</a>
+            <button class="theme-toggle-btn" id="themeToggle">
+                <span id="themeIcon"><i class="fa-solid fa-moon"></i></span> <span id="themeText">Dark</span>
+            </button>
+            <a href="{{ url_for('login') }}" class="login-btn">Login</a>
+        </nav>
+    </header>
+
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1>
+                One Platform,<br>
+                One Connected Campus
+            </h1>
+            <p>
+                Campus Connect is a smart campus platform that connects students, faculty &amp; staff, and administrators in one place.
+            </p>
+            <a href="{{ url_for('login') }}" class="get-started">Get Started</a>
+        </div>
+    </section>
+
+    <section id="features" class="features">
+        <h2>Our Features</h2>
+        <p class="section-text">Everything you need for a smarter and more connected campus.</p>
+
+        <div class="feature-container">
+            <div class="feature-card">
+                <i class="fa-solid fa-user-shield" style="font-size: 2.5rem; color: #3b82f6; margin-bottom: 15px;"></i>
+                <h3>Admin</h3>
+                <p>Onboard staff, verify credentials, broadcast notices and manage campus operations.</p>
+            </div>
+
+            <div class="feature-card">
+                <i class="fa-solid fa-chalkboard-user" style="font-size: 2.5rem; color: #3b82f6; margin-bottom: 15px;"></i>
+                <h3>Faculty &amp; Staff</h3>
+                <p>Teachers, Principals, HODs, Wardens, Electricians, Sweepers &amp; Staff operations.</p>
+            </div>
+
+            <div class="feature-card">
+                <i class="fa-solid fa-user-graduate" style="font-size: 2.5rem; color: #3b82f6; margin-bottom: 15px;"></i>
+                <h3>Student</h3>
+                <p>Attendance, timetable, leave request, gate pass, complaints and notices.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="about">
+        <h2>About Campus Connect</h2>
+        <p>
+            Campus Connect is designed to bring important campus activities into one digital platform. It helps students, faculty, staff and administrators communicate and manage campus activities easily.
+        </p>
+    </section>
+
+
+    <footer>
+        <p>© 2026 Campus Connect | One Campus Platform</p>
+    </footer>
+
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

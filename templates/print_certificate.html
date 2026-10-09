@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Campus Connect - Official Certificate</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            padding: 30px 15px;
+            margin: 0;
+        }
+
+        .top-nav-bar {
+            max-width: 700px;
+            margin: 0 auto 15px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #475569;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13.5px;
+            font-weight: bold;
+            transition: background 0.2s ease;
+        }
+
+        .btn-back:hover {
+            background: #1e293b;
+        }
+
+        .cert-card {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border: 4px double #2563eb;
+            border-radius: 4px;
+            padding: 40px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .college-header {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        .college-header h1 {
+            color: #1e3a8a;
+            margin: 0 0 5px 0;
+            font-size: 24px;
+        }
+
+        .college-header p {
+            color: #64748b;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .cert-title {
+            font-size: 28px;
+            color: #0f172a;
+            margin: 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-decoration: underline;
+        }
+
+        .cert-body {
+            font-size: 18px;
+            line-height: 1.8;
+            color: #334155;
+            margin: 30px 0;
+            text-align: justify;
+        }
+
+        .student-name {
+            font-size: 22px;
+            font-weight: bold;
+            color: #1e40af;
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 60px;
+            padding-top: 20px;
+        }
+
+        .signature-block {
+            text-align: center;
+        }
+
+        .signature-line {
+            width: 150px;
+            border-top: 1px solid #334155;
+            margin-bottom: 5px;
+        }
+
+        .signature-text {
+            font-size: 14px;
+            color: #475569;
+            font-weight: bold;
+        }
+
+        .print-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13.5px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .print-btn:hover {
+            background: #1d4ed8;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .top-nav-bar {
+                display: none;
+            }
+
+            .cert-card {
+                border: none;
+                box-shadow: none;
+                max-width: 100%;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="top-nav-bar">
+        <a href="{{ url_for('student_dashboard') }}" class="btn-back">
+            &larr; Back to Dashboard
+        </a>
+        <button class="print-btn" onclick="window.print()">
+            &#128424; Print Certificate
+        </button>
+    </div>
+
+    <div class="cert-card">
+        <div class="college-header">
+            <h1>{{ session.get('college_name', 'Campus Connect Institute') }}</h1>
+            <p>Empowering the Future, Innovating Tomorrow</p>
+        </div>
+
+        <h2 class="cert-title">
+            {% if doc.doc_type == 'bonafide' %}
+            Bonafide Certificate
+            {% elif doc.doc_type == 'fee_due' %}
+            Fee Due Clearance Certificate
+            {% elif doc.doc_type == 'character_cert' %}
+            Character Certificate
+            {% elif doc.doc_type == 'hostel_noc' %}
+            Hostel NOC
+            {% else %}
+            Official Certificate
+            {% endif %}
+        </h2>
+
+        <div class="cert-body">
+            This is to certify that <span class="student-name">{{ doc.student_name }}</span>
+            (Student ID: <strong>{{ doc.student_id }}</strong>),
+            a student of <strong>{{ doc.branch }}</strong> branch,
+            <strong>{{ doc.year }}</strong>, has been
+            granted this
+            <strong style="text-transform: capitalize;">{{ doc.doc_type.replace('_', ' ') }}</strong>
+            as per their request on <strong>{{ doc.created_at.strftime('%d %B %Y') }}</strong>.
+            <br><br>
+            <strong>Purpose stated:</strong> {{ doc.purpose }}
+            <br><br>
+            This document is electronically verified and issued through the Campus Connect portal.
+        </div>
+
+        <div class="footer">
+            <div class="signature-block">
+                <div style="font-weight: bold; font-size: 18px; margin-bottom: 25px; color: #15803d;">Verified &
+                    Approved</div>
+                <div class="signature-line"></div>
+                <div class="signature-text">HOD / Principal / Admin</div>
+            </div>
+
+            <div class="signature-block">
+                <div style="margin-bottom: 25px; font-weight: bold;">Date: {{ date }}</div>
+                <div class="signature-line"></div>
+                <div class="signature-text">Official Issuance Date</div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
