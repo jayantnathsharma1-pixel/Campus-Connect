@@ -217,12 +217,15 @@ DESIGNATIONS = [
 ]
 
 def send_otp_email(target_email, user_name, otp, purpose="Verification"):
+    import smtplib
+    from email.mime.text import MIMEText
     try:
-        msg = Message(
-            subject=f"Campus Connect - OTP for {purpose}",
-            recipients=[target_email]
-        )
-        msg.body = f"""Hello {user_name},
+        sender_email = os.getenv('MAIL_USERNAME')
+        sender_password = os.getenv('MAIL_PASSWORD')
+        smtp_server = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+        smtp_port = int(os.getenv('MAIL_PORT', 587))
+        
+        body = f"""Hello {user_name},
 
 Your 6-digit verification code (OTP) for {purpose} is:
 
@@ -235,7 +238,17 @@ Please enter this verification code to complete your admission, onboarding, or a
 Regards,
 Campus Connect Security Operations
 """
-        mail.send(msg)
+        msg = MIMEText(body)
+        msg['Subject'] = f"Campus Connect - OTP for {purpose}"
+        msg['From'] = os.getenv('MAIL_DEFAULT_SENDER_EMAIL', sender_email)
+        msg['To'] = target_email
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+        server.quit()
+        
         print(f"📧 [EMAIL OTP] Successfully dispatched OTP {otp} to {target_email} ({purpose})")
         return True
     except Exception as e:

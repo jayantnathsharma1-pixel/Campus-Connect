@@ -196,7 +196,7 @@
             .then(response => response.json())
             .then(data => {
                 btn.disabled = false;
-                btn.innerText = "<i class="fa-solid fa-rotate-right"></i> Resend OTP";
+                btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Resend OTP';
                 if (data.success) {
                     statusElem.style.color = "#16a34a";
                     statusElem.innerText = data.message + " Enter 6-digit code below.";
@@ -207,7 +207,7 @@
             })
             .catch(error => {
                 btn.disabled = false;
-                btn.innerText = "<i class="fa-solid fa-envelope"></i> Send OTP";
+                btn.innerHTML = '<i class="fa-solid fa-envelope"></i> Send OTP';
                 statusElem.style.color = "#ef4444";
                 statusElem.innerText = "Server error. Please verify SMTP credentials.";
             });
